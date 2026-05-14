@@ -1,0 +1,48 @@
+<div class="login-page">
+  <section class="login-left">
+    <div class="overlay"></div>
+  </section>
+
+  <section class="login-right">
+    <div class="login-card">
+      <div class="brand-box">
+        <div class="logo-box">QG</div>
+        <h2>QUALITY GROUP</h2>
+        <span>Sistema seguimiento de pedidos</span>
+      </div>
+
+      <form (ngSubmit)="login()">
+        <label>Correo electrónico</label>
+        <input
+          type="email"
+          [(ngModel)]="correo"
+          name="correo"
+          placeholder="admin@qg.com"
+          required
+        />
+
+        <label>Contraseña</label>
+        <input
+          type="password"
+          [(ngModel)]="password"
+          name="password"
+          placeholder="Ingrese su contraseña"
+          required
+        />
+
+        <div class="options">
+          <label class="remember">
+            <input type="checkbox" />
+            Recordar sesión
+          </label>
+
+          <a href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <button type="submit" [disabled]="cargando">{{ cargando ? 'Entrando…' : 'Iniciar sesión' }}</button>
+
+        <p class="error" *ngIf="error">{{ error }}</p>
+      </form>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,1349 @@
+<div class="dashboard">
+
+  <aside class="sidebar">
+
+    <div class="logo-section">
+      <div class="logo-box">
+        <img src="Logo.jpg" alt="Quality Group">
+      </div>
+      <div class="logo-text">
+        <h2>Q & G Quality Group</h2>
+        <span>Gestion de Procesos</span>
+      </div>
+    </div>
+
+    <nav class="menu">
+
+      <a
+        *ngIf="puedeVerNav('DASHBOARD')"
+        (click)="seleccionarVista('DASHBOARD')"
+        [class.active]="vistaActual === 'DASHBOARD'"
+      >
+        <span>📊</span> Dashboard
+      </a>
+
+      <a
+        *ngIf="puedeVerNav('PEDIDOS')"
+        (click)="seleccionarVista('PEDIDOS')"
+        [class.active]="vistaActual === 'PEDIDOS'"
+      >
+        <span>📦</span> Pedidos Generales
+      </a>
+
+      <a
+        *ngIf="puedeVerNav('CLIENTES')"
+        (click)="seleccionarVista('CLIENTES')"
+        [class.active]="vistaActual === 'CLIENTES'"
+      >
+        <span>👥</span> Clientes
+      </a>
+
+      <a
+        *ngIf="puedeVerNav('PAGOS')"
+        (click)="seleccionarVista('PAGOS')"
+        [class.active]="vistaActual === 'PAGOS'"
+      >
+        <span>💳</span> Pagos
+      </a>
+
+      <a
+        *ngIf="puedeVerNav('CORTE')"
+        (click)="seleccionarVista('CORTE')"
+        [class.active]="vistaActual === 'CORTE'"
+      >
+        <span>🏭</span> Zona Corte
+      </a>
+
+      <a *ngIf="puedeVerNav('CANTEADO')" (click)="seleccionarVista('CANTEADO')" [class.active]="vistaActual === 'CANTEADO'">
+        <span>🪵</span> Zona Canto
+      </a>
+
+      <a *ngIf="puedeVerNav('ESPECIALES')" (click)="seleccionarVista('ESPECIALES')" [class.active]="vistaActual === 'ESPECIALES'">
+        <span>⚙️</span> Especiales
+      </a>
+
+      <a *ngIf="puedeVerNav('DESPACHO')" (click)="seleccionarVista('DESPACHO')" [class.active]="vistaActual === 'DESPACHO'">
+        <span>🚚</span> Despacho
+      </a>
+
+      <a *ngIf="puedeVerNav('ENTREGADO')" (click)="seleccionarVista('ENTREGADO')" [class.active]="vistaActual === 'ENTREGADO'">
+        <span>✅</span> Entregados
+      </a>
+
+      <a *ngIf="puedeVerNav('REPORTES')" (click)="seleccionarVista('REPORTES')" [class.active]="vistaActual === 'REPORTES'">
+        <span>📈</span> Reportes
+      </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+      <a *ngIf="puedeVerNav('CONFIGURACION')" (click)="seleccionarVista('CONFIGURACION')" [class.active]="vistaActual === 'CONFIGURACION'"><span>⚙️</span> Configuración</a>
+      <a *ngIf="puedeVerNav('ROLES_PERMISOS')" (click)="seleccionarVista('ROLES_PERMISOS')" [class.active]="vistaActual === 'ROLES_PERMISOS'"><span>👥</span> Roles y permisos</a>
+      <a (click)="cerrarSesion()"><span>🚪</span> Cerrar sesión</a>
+    </div>
+
+  </aside>
+
+  <main class="main-content">
+
+    <header class="topbar">
+      <div>
+        <h1>
+          {{
+            vistaActual === 'DASHBOARD' ? 'Dashboard Ejecutivo' :
+            vistaActual === 'PEDIDOS' ? 'Pedidos Generales' :
+            vistaActual === 'CLIENTES' ? 'Clientes' :
+            vistaActual === 'CORTE' ? 'Zona Corte' :
+            vistaActual === 'CANTEADO' ? 'Zona Canto' :
+            vistaActual === 'ESPECIALES' ? 'Especiales' :
+            vistaActual === 'DESPACHO' ? 'Despacho' :
+            vistaActual === 'ENTREGADO' ? 'Entregados' :
+            vistaActual === 'PAGOS' ? 'Control de Pagos' :
+            vistaActual === 'REPORTES' ? 'Reportes' :
+            vistaActual === 'CONFIGURACION' ? 'Configuración' :
+            vistaActual === 'ROLES_PERMISOS' ? 'Roles y permisos' :
+            vistaActual
+          }}
+        </h1>
+        <p *ngIf="vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'">Control empresarial de producción, prioridades y estados.</p>
+        <p *ngIf="vistaActual === 'REPORTES'">Filtre pedidos por cliente, vendedora, estados de proceso, máquinas, fechas y situación de pago. Los totales se calculan sobre el resultado.</p>
+        <p *ngIf="vistaActual === 'CONFIGURACION'">Datos de empresa, moneda y preferencias generales.</p>
+        <p *ngIf="vistaActual === 'ROLES_PERMISOS'">Usuarios, roles del sistema y matriz de vistas del menú (permisos en este navegador).</p>
+      </div>
+
+      <button
+        class="btn-primary"
+        *ngIf="auth.canCreateOrder() && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'"
+        (click)="abrirModal()"
+      >
+        + Nuevo Pedido
+      </button>
+
+      <button
+        class="btn-primary"
+        *ngIf="vistaActual === 'CLIENTES' && auth.canCreateOrder()"
+        (click)="abrirModalCliente()"
+      >
+        + Nuevo Cliente
+      </button>
+    </header>
+
+    <!-- DASHBOARD -->
+    <section *ngIf="vistaActual === 'DASHBOARD'">
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Pedidos</h3>
+          <strong>{{ totalPedidos }}</strong>
+          <span>Registrados</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>En Corte</h3>
+          <strong>{{ totalCorte }}</strong>
+          <span>Pendientes en corte</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>En Canteado</h3>
+          <strong>{{ totalCanteado }}</strong>
+          <span>Zona canto</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Despacho</h3>
+          <strong>{{ totalDespacho }}</strong>
+          <span>Por entregar</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Entregados</h3>
+          <strong>{{ totalEntregados }}</strong>
+          <span>Finalizados</span>
+        </div>
+      </section>
+
+        <section class="dashboard-grid">
+
+            <div class="premium-card full-width">
+                <h2>Resumen operativo por estado</h2>
+
+                <div class="progress-item">
+                    <div>
+                    <span>Corte</span>
+                    <strong>{{ totalCorte }} pedidos</strong>
+                    </div>
+                    <div class="progress-bar">
+                    <div class="progress-fill corte" [style.width.%]="porcentajeCorte"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div>
+                    <span>Canteado</span>
+                    <strong>{{ totalCanteado }} pedidos</strong>
+                    </div>
+                    <div class="progress-bar">
+                    <div class="progress-fill canto" [style.width.%]="porcentajeCanteado"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div>
+                    <span>Despacho</span>
+                    <strong>{{ totalDespacho }} pedidos</strong>
+                    </div>
+                    <div class="progress-bar">
+                    <div class="progress-fill despacho" [style.width.%]="porcentajeDespacho"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div>
+                    <span>Entregados</span>
+                    <strong>{{ totalEntregados }} pedidos</strong>
+                    </div>
+                    <div class="progress-bar">
+                    <div class="progress-fill entregado" [style.width.%]="porcentajeEntregados"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="premium-card">
+            <h2>Producción por máquina</h2>
+
+            <div class="metric-row">
+                <span>Escuadradora</span>
+                <strong>{{ totalEscuadradora }} pedidos</strong>
+            </div>
+
+            <div class="metric-row">
+                <span>Seccionadora</span>
+                <strong>{{ totalSeccionadora }} pedidos</strong>
+            </div>
+
+            <div class="metric-row highlight">
+                <span>Planchas pendientes Escuadradora</span>
+                <strong>{{ planchasPendientesEscuadradora }}</strong>
+            </div>
+
+            <div class="metric-row highlight">
+                <span>Planchas pendientes Seccionadora</span>
+                <strong>{{ planchasPendientesSeccionadora }}</strong>
+            </div>
+            </div>
+
+            <div class="dashboard-card vendedores-card">
+
+          <div class="card-header">
+            <h2>Pedidos por vendedora</h2>
+          </div>
+
+          <div class="pie-wrapper">
+
+            <div class="pie-chart">
+              <div class="pie-center">
+                {{ totalPedidosProduccion }}
+                <span>Pedidos</span>
+              </div>
+            </div>
+
+            <div class="pie-legend">
+
+              <div class="legend-item">
+                <span class="legend-color diana"></span>
+                Diana
+                <strong>{{ pedidosDiana }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color anabel"></span>
+                Anabel
+                <strong>{{ pedidosAnabel }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color isamar"></span>
+                Isamar
+                <strong>{{ pedidosIsamar }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color melissa"></span>
+                Melissa
+                <strong>{{ pedidosMelissa }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color rocio"></span>
+                Rocío
+                <strong>{{ pedidosRocio }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color karina"></span>
+                Karina
+                <strong>{{ pedidosKarina }}</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-color lucia"></span>
+                Lucía
+                <strong>{{ pedidosLucia }}</strong>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+        </section>
+
+    </section>
+
+    <!-- CONFIGURACIÓN -->
+    <section class="table-card config-card" *ngIf="vistaActual === 'CONFIGURACION'">
+      <div class="card-header">
+        <h2>Configuración</h2>
+        <button type="button" class="btn-primary" *ngIf="auth.hasRole('ADMIN')" (click)="guardarConfiguracion()">Guardar cambios</button>
+      </div>
+
+      <ng-container *ngIf="configKeysOrdenadas.length > 0; else configCargandoTpl">
+        <div class="config-grid" *ngIf="auth.hasRole('ADMIN'); else configSoloLecturaTpl">
+          <div class="field" *ngFor="let key of configKeysOrdenadas; trackBy: trackByConfigKey">
+            <label>{{ etiquetaClaveConfig(key) }}</label>
+            <input type="text" [(ngModel)]="configMapa[key]" [name]="'cfg-' + key" />
+          </div>
+        </div>
+        <ng-template #configSoloLecturaTpl>
+          <p class="config-hint">Solo administración puede editar estos valores. Vista de referencia:</p>
+          <dl class="config-readonly">
+            <ng-container *ngFor="let key of configKeysOrdenadas; trackBy: trackByConfigKey">
+              <dt>{{ etiquetaClaveConfig(key) }}</dt>
+              <dd>{{ configMapa[key] || '—' }}</dd>
+            </ng-container>
+          </dl>
+        </ng-template>
+      </ng-container>
+      <ng-template #configCargandoTpl>
+        <p class="empty" style="padding: 24px;">Cargando configuración…</p>
+      </ng-template>
+    </section>
+
+    <!-- ROLES Y PERMISOS -->
+    <section class="table-card roles-permisos-card" *ngIf="vistaActual === 'ROLES_PERMISOS'">
+      <ng-container *ngIf="auth.hasRole('ADMIN'); else sinPermisoRolesTpl">
+        <div class="card-header">
+          <h2>Administración de accesos</h2>
+          <span>La matriz de menú se guarda en este navegador (localStorage). Usuarios y roles viven en el servidor.</span>
+        </div>
+
+        <h3 class="subsection-title">Usuarios</h3>
+        <div class="admin-toolbar">
+          <button type="button" class="btn-primary" (click)="abrirModalUsuarioNuevo()">+ Nuevo usuario</button>
+        </div>
+        <div class="table-wrapper admin-users-wrap">
+          <table class="admin-users-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Activo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of usuariosAdmin; trackBy: trackByUsuarioAdminId">
+                <td>{{ u.nombre }}</td>
+                <td>{{ u.correo }}</td>
+                <td>{{ u.rol }}</td>
+                <td>{{ u.activo ? 'Sí' : 'No' }}</td>
+                <td><button type="button" class="edit-btn" (click)="abrirModalUsuarioEditar(u)">Editar</button></td>
+              </tr>
+              <tr *ngIf="usuariosAdmin.length === 0">
+                <td colspan="5" class="empty">No hay usuarios o aún se están cargando.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="subsection-title">Roles en el sistema</h3>
+        <p class="config-hint">Los usuarios solo pueden asignarse roles que existan aquí. Eliminar un rol solo es posible si ningún usuario lo usa.</p>
+        <div class="admin-toolbar rol-catalog-toolbar">
+          <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="Nuevo rol (ej. LOGISTICA)" name="nuevoRolNombre" />
+          <button type="button" class="btn-primary" (click)="crearRolEnCatalogo()">Agregar rol</button>
+        </div>
+        <div class="rol-chips">
+          <span class="rol-chip" *ngFor="let r of rolesMatrixRoles; trackBy: trackByString">
+            {{ r }}
+            <button type="button" class="chip-remove" *ngIf="!rolesNoEliminarEnCatalogo.has(r)" (click)="eliminarRolCatalogo(r)" title="Eliminar del catálogo">×</button>
+          </span>
+        </div>
+
+        <h3 class="subsection-title">Matriz de vistas por rol</h3>
+        <div class="table-wrapper roles-matrix-wrap">
+          <table class="roles-matrix">
+            <thead>
+              <tr>
+                <th class="sticky-col">Rol</th>
+                <th *ngFor="let nav of navIdsLista; trackBy: trackByNavId">{{ navEtiqueta(nav) }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rol of rolesMatrixRoles; trackBy: trackByString">
+                <td class="sticky-col rol-name-cell">{{ rolEtiqueta(rol) }}</td>
+                <td *ngFor="let nav of navIdsLista; trackBy: trackByNavId" class="check-cell">
+                  <input
+                    type="checkbox"
+                    [checked]="permisoNavActivo(rol, nav)"
+                    (change)="togglePermisoNav(rol, nav, $any($event.target).checked)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="roles-actions">
+          <button type="button" class="btn-primary" (click)="guardarMatrizPermisos()">Guardar permisos del menú</button>
+          <button type="button" class="cancel-btn" (click)="restaurarMatrizPorDefecto()">Restaurar por defecto</button>
+        </div>
+      </ng-container>
+      <ng-template #sinPermisoRolesTpl>
+        <p class="empty" style="padding: 24px;">No tiene permisos para administrar roles y permisos.</p>
+      </ng-template>
+    </section>
+
+    <!-- FILTROS -->
+    <section class="filters-card" *ngIf="vistaActual !== 'DASHBOARD' && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'">
+      <input type="text" [(ngModel)]="filtroCliente" (ngModelChange)="onFiltrosCambiaron()" placeholder="Buscar cliente...">
+
+      <select [(ngModel)]="filtroVendedora" (ngModelChange)="onFiltrosCambiaron()">
+        <option value="">Todas las vendedoras</option>
+        <option *ngFor="let ov of opcionesVendedoraSelect(); trackBy: trackByVendedoraOpt" [value]="ov.value">{{ ov.label }}</option>
+      </select>
+
+      <select [(ngModel)]="filtroEstado" (ngModelChange)="onFiltrosCambiaron()">
+        <option value="">Todos los estados</option>
+        <option value="CORTE">CORTE</option>
+        <option value="CANTEADO">CANTEADO</option>
+        <option value="ESPECIALES">ESPECIALES</option>
+        <option value="DESPACHO">DESPACHO</option>
+        <option value="ENTREGADO">ENTREGADO</option>
+      </select>
+
+      <select [(ngModel)]="filtroMaquina" (ngModelChange)="onFiltrosCambiaron()">
+        <option value="">Todas las máquinas</option>
+        <option value="ESCUADRADORA">Escuadradora</option>
+        <option value="SECCIONADORA">Seccionadora</option>
+      </select>
+
+      <button (click)="limpiarFiltros()">Limpiar</button>
+    </section>
+
+    <!-- Filtros extra: Pagos (deuda + fechas ingreso) -->
+    <section class="filters-card pagos-extra-filters" *ngIf="vistaActual === 'PAGOS'">
+      <select [(ngModel)]="filtroPagoSaldo" (ngModelChange)="onFiltrosCambiaron()" name="filtroPagoSaldo">
+        <option value="">Todos (pago)</option>
+        <option value="DEBE">Solo con saldo pendiente</option>
+        <option value="CANCELADO">Solo cancelados al 100%</option>
+      </select>
+      <label class="filter-date-label">Ingreso desde</label>
+      <input type="date" [(ngModel)]="filtroPagoFechaIngresoDesde" (ngModelChange)="onFiltrosCambiaron()" name="pagoFiDesde" />
+      <label class="filter-date-label">Ingreso hasta</label>
+      <input type="date" [(ngModel)]="filtroPagoFechaIngresoHasta" (ngModelChange)="onFiltrosCambiaron()" name="pagoFiHasta" />
+    </section>
+
+    <!-- Filtros: Reportes -->
+    <section class="filters-card reportes-filters" *ngIf="vistaActual === 'REPORTES'">
+      <input type="text" [(ngModel)]="filtroRepCliente" (ngModelChange)="onFiltrosCambiaron()" placeholder="Cliente (texto)..." name="repCliente" />
+      <select [(ngModel)]="filtroRepVendedora" (ngModelChange)="onFiltrosCambiaron()" name="repVend">
+        <option value="">Todas las vendedoras</option>
+        <option *ngFor="let ov of opcionesVendedoraSelect(); trackBy: trackByVendedoraOpt" [value]="ov.value">{{ ov.label }}</option>
+      </select>
+      <select [(ngModel)]="filtroRepEstado" (ngModelChange)="onFiltrosCambiaron()" name="repEstado">
+        <option value="">Todos los estados</option>
+        <option value="CORTE">CORTE</option>
+        <option value="CANTEADO">CANTEADO</option>
+        <option value="ESPECIALES">ESPECIALES</option>
+        <option value="DESPACHO">DESPACHO</option>
+        <option value="ENTREGADO">ENTREGADO</option>
+      </select>
+      <select [(ngModel)]="filtroRepMaquina" (ngModelChange)="onFiltrosCambiaron()" name="repMaq">
+        <option value="">Todas las máquinas</option>
+        <option value="ESCUADRADORA">Escuadradora</option>
+        <option value="SECCIONADORA">Seccionadora</option>
+      </select>
+      <select [(ngModel)]="filtroRepSaldo" (ngModelChange)="onFiltrosCambiaron()" name="repSaldo">
+        <option value="">Todos (pago)</option>
+        <option value="DEBE">Con saldo pendiente</option>
+        <option value="CANCELADO">Cancelados al 100%</option>
+      </select>
+      <label class="filter-date-label">Ing. desde</label>
+      <input type="date" [(ngModel)]="filtroRepFiDesde" (ngModelChange)="onFiltrosCambiaron()" name="repFiDesde" />
+      <label class="filter-date-label">Ing. hasta</label>
+      <input type="date" [(ngModel)]="filtroRepFiHasta" (ngModelChange)="onFiltrosCambiaron()" name="repFiHasta" />
+      <label class="filter-date-label">Entr. desde</label>
+      <input type="date" [(ngModel)]="filtroRepFeDesde" (ngModelChange)="onFiltrosCambiaron()" name="repFeDesde" />
+      <label class="filter-date-label">Entr. hasta</label>
+      <input type="date" [(ngModel)]="filtroRepFeHasta" (ngModelChange)="onFiltrosCambiaron()" name="repFeHasta" />
+      <button type="button" (click)="limpiarFiltrosReporte()">Limpiar reporte</button>
+    </section>
+
+    <!-- Reportes: totales + vista previa PDF (sin tabla de pedidos) -->
+    <section class="table-card reportes-panel" *ngIf="vistaActual === 'REPORTES'">
+      <div class="card-header">
+        <h2>Resultado del reporte</h2>
+        <span>{{ reportResumen.pedidos }} registros</span>
+      </div>
+
+      <div class="reporte-resumen">
+        <div class="reporte-resumen-item"><span>Pedidos</span><strong>{{ reportResumen.pedidos }}</strong></div>
+        <div class="reporte-resumen-item"><span>Total pedidos (S/)</span><strong>{{ reportResumen.total | number:'1.2-2' }}</strong></div>
+        <div class="reporte-resumen-item"><span>Saldo pendiente (S/)</span><strong>{{ reportResumen.saldo | number:'1.2-2' }}</strong></div>
+      </div>
+
+      <div class="reporte-pdf-toolbar">
+        <button type="button" class="btn-primary" (click)="actualizarVistaPreviaReportePdf()" [disabled]="reportePdfGenerando">
+          {{ reportePdfGenerando ? 'Generando PDF…' : 'Actualizar vista previa PDF' }}
+        </button>
+        <span class="reporte-pdf-hint">El PDF usa los mismos filtros que los totales anteriores.</span>
+      </div>
+
+      <div class="reporte-pdf-frame-wrap">
+        <iframe *ngIf="reportePdfUrl" [src]="reportePdfUrl" class="reporte-pdf-iframe" title="Vista previa del reporte en PDF"></iframe>
+        <div *ngIf="!reportePdfUrl && !reportePdfGenerando" class="reporte-pdf-placeholder">
+          Pulse «Actualizar vista previa PDF» para generar y ver el documento aquí.
+        </div>
+        <div *ngIf="reportePdfGenerando && !reportePdfUrl" class="reporte-pdf-placeholder">Generando documento…</div>
+      </div>
+    </section>
+
+    <!-- SUBVENTANAS CORTE -->
+    <section class="subtabs" *ngIf="vistaActual === 'CORTE'">
+      <button
+        (click)="cambiarSubVistaCorte('ESCUADRADORA')"
+        [class.active]="subVistaCorte === 'ESCUADRADORA'"
+      >
+        Escuadradora
+      </button>
+
+      <button
+        (click)="cambiarSubVistaCorte('SECCIONADORA')"
+        [class.active]="subVistaCorte === 'SECCIONADORA'"
+      >
+        Seccionadora
+      </button>
+    </section>
+
+    <!-- TABLA -->
+    <section
+        class="table-card"
+        *ngIf="vistaActual !== 'DASHBOARD' && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'"
+      >
+
+      <div class="card-header">
+        <h2>Listado de pedidos</h2>
+        <span>{{ pedidosVistaRows.length }} registros</span>
+      </div>
+
+<div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="columnKeys.has('prioridad')" class="col-prioridad" title="Prioridad">#</th>
+            <th *ngIf="columnKeys.has('estado')">Estado</th>
+            <th *ngIf="columnKeys.has('numeroOrden')" class="col-numero">N° Orden</th>
+            <th *ngIf="columnKeys.has('cliente')">Cliente</th>
+            <th *ngIf="columnKeys.has('cantidad')">Cantidad</th>
+            <th *ngIf="columnKeys.has('colores')">Color</th>
+            <th *ngIf="columnKeys.has('vendedora')">Vendedora</th>
+            <th *ngIf="columnKeys.has('cortes')">Cortes</th>
+            <th *ngIf="columnKeys.has('ranuras')">Ranuras</th>
+            <th *ngIf="columnKeys.has('especiales')">Especiales</th>
+            <th *ngIf="columnKeys.has('perforaciones')">Perforaciones</th>
+            <th *ngIf="columnKeys.has('cantoDelgado')">Canto Delgado</th>
+            <th *ngIf="columnKeys.has('cantoGrueso')">Canto Grueso</th>
+            <th *ngIf="columnKeys.has('cantoDelgado36mm')">Canto Delgado 36mm</th>
+            <th *ngIf="columnKeys.has('cantoGrueso36mm')">Canto Grueso 36mm</th>
+            <th *ngIf="columnKeys.has('observaciones')">Observaciones</th>
+            <th *ngIf="columnKeys.has('maquina')">Máquina</th>
+            <th *ngIf="columnKeys.has('fechaIngreso')">Fecha Ingreso</th>
+            <th *ngIf="columnKeys.has('fechaEntrega')">Fecha Entrega</th>
+            <th *ngIf="columnKeys.has('horaEntrega')">Hora Entrega</th>
+            <th *ngIf="columnKeys.has('pagos')">Pagos</th>
+            <th *ngIf="columnKeys.has('acciones')" class="acciones-column"> Acciones </th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr
+            *ngFor="let p of pedidosVistaRows; let i = index; trackBy: trackByPedidoRow"
+            draggable="true"
+            (dragstart)="iniciarArrastre(i)"
+            (dragover)="permitirSoltar($event)"
+            (drop)="soltarPedido(i)"
+            class="draggable-row"
+            [class.fila-deuda]="(vistaActual === 'DESPACHO' || vistaActual === 'PAGOS') && p.saldoPendiente > 0"
+          >
+
+            <!-- PRIORIDAD -->
+            <td *ngIf="columnKeys.has('prioridad')" class="col-prioridad">
+              <div class="priority-number">
+                {{ i + 1 }}
+              </div>
+            </td>
+
+            <!-- ESTADO -->
+            <td *ngIf="columnKeys.has('estado')">
+
+              <select
+                class="estado-select"
+                [ngModel]="p.estado"
+                (ngModelChange)="cambiarEstadoDirecto(p, $event)"
+                [disabled]="!auth.canChangeEstado()"
+              >
+
+                <option value="CORTE">🔵 CORTE</option>
+                <option value="CANTEADO">🟢 CANTEADO</option>
+                <option value="ESPECIALES">🟣 ESPECIALES</option>
+                <option value="DESPACHO">🟠 DESPACHO</option>
+                <option value="ENTREGADO">✅ ENTREGADO</option>
+
+              </select>
+
+            </td>
+
+            <!-- NUMERO -->
+            <td
+              *ngIf="columnKeys.has('numeroOrden')"
+              class="col-numero"
+            >
+              {{ p.numeroOrden }}
+            </td>
+
+            <!-- CLIENTE -->
+            <td *ngIf="columnKeys.has('cliente')">
+              {{ p.cliente?.nombre || '-' }}
+            </td>
+
+            <!-- CANTIDAD -->
+            <td *ngIf="columnKeys.has('cantidad')">
+              {{ p.cantidad || '-' }}
+            </td>
+
+            <!-- COLORES -->
+            <td *ngIf="columnKeys.has('colores')">
+
+              {{ p.colorPrincipal || '-' }}
+
+              <span *ngIf="p.colorSecundario">
+                / {{ p.colorSecundario }}
+              </span>
+
+              <span *ngIf="p.colorTercero">
+                / {{ p.colorTercero }}
+              </span>
+
+            </td>
+
+            <!-- VENDEDORA -->
+            <td *ngIf="columnKeys.has('vendedora')">
+
+              <select
+                class="vendedora-select"
+                [ngModel]="p.vendedora"
+                (ngModelChange)="cambiarVendedora(p, $event)"
+                [disabled]="tieneVendedoraFijadaPorRol()"
+              >
+
+                <option *ngFor="let ov of opcionesVendedoraSelect(); trackBy: trackByVendedoraOpt" [value]="ov.value">{{ ov.label }}</option>
+
+              </select>
+
+            </td>
+
+            <!-- CORTES -->
+            <td *ngIf="columnKeys.has('cortes')">
+              {{ p.cortes || '-' }}
+            </td>
+
+            <!-- RANURAS -->
+            <td *ngIf="columnKeys.has('ranuras')">
+              {{ p.ranuras || '-' }}
+            </td>
+
+            <!-- ESPECIALES -->
+            <td *ngIf="columnKeys.has('especiales')">
+              {{ p.cantidadEspeciales || '-' }}
+            </td>
+
+            <!-- PERFORACIONES -->
+            <td *ngIf="columnKeys.has('perforaciones')">
+              {{ p.perforaciones || '-' }}
+            </td>
+
+            <!-- CANTO DELGADO -->
+            <td *ngIf="columnKeys.has('cantoDelgado')">
+              {{ p.cantoDelgado || '-' }}
+            </td>
+
+            <!-- CANTO GRUESO -->
+            <td *ngIf="columnKeys.has('cantoGrueso')">
+              {{ p.cantoGrueso || '-' }}
+            </td>
+
+            <!-- CANTO DELGADO 36 -->
+            <td *ngIf="columnKeys.has('cantoDelgado36mm')">
+              {{ p.cantoDelgado36mm || '-' }}
+            </td>
+
+            <!-- CANTO GRUESO 36 -->
+            <td *ngIf="columnKeys.has('cantoGrueso36mm')">
+              {{ p.cantoGrueso36mm || '-' }}
+            </td>
+
+            <!-- OBSERVACIONES -->
+            <td *ngIf="columnKeys.has('observaciones')">
+              {{ p.observaciones || '-' }}
+            </td>
+
+            <!-- MAQUINA -->
+            <td *ngIf="columnKeys.has('maquina')">
+              {{ p.maquina || '-' }}
+            </td>
+
+            <!-- FECHA INGRESO -->
+            <td *ngIf="columnKeys.has('fechaIngreso')" class="cell-fecha-ingreso">
+              <ng-container *ngIf="p.fechaIngreso; else sinFechaIngresoTpl">
+                <div class="fecha-ingreso-stack">
+                  <span class="fecha-ingreso-fecha">{{ p.fechaIngreso }}</span>
+                  <span class="fecha-ingreso-hora" *ngIf="p.horaIngreso">{{ p.horaIngreso }}</span>
+                </div>
+              </ng-container>
+              <ng-template #sinFechaIngresoTpl>—</ng-template>
+            </td>
+
+            <!-- FECHA ENTREGA -->
+            <td *ngIf="columnKeys.has('fechaEntrega')">
+              {{ p.fechaEntrega || '-' }}
+            </td>
+
+            <!-- HORA ENTREGA -->
+            <td *ngIf="columnKeys.has('horaEntrega')">
+              {{ p.horaEntrega || '-' }}
+            </td>
+
+            <!-- PAGOS -->
+            <td *ngIf="columnKeys.has('pagos')">
+
+              <span
+                *ngIf="p.saldoPendiente > 0"
+                class="deuda-badge"
+              >
+                DEBE S/ {{ p.saldoPendiente | number:'1.2-2' }}
+              </span>
+
+              <span
+                *ngIf="!p.saldoPendiente || p.saldoPendiente <= 0"
+                class="pagado-badge"
+              >
+                CANCELADO
+              </span>
+
+              <div class="pagos-actions" *ngIf="auth.canRegistrarPago()">
+                <button type="button" class="history-btn" (click)="abrirHistorialPagosPedido(p)">Historial pagos</button>
+                <button type="button" class="edit-btn" (click)="abrirModalRegistrarPago(p)">Registrar abono</button>
+              </div>
+
+            </td>
+
+            <!-- ACCIONES -->
+            <td *ngIf="columnKeys.has('acciones')">
+
+              <div class="acciones-group">
+
+                <button
+                  class="history-btn"
+                  (click)="verAuditoria(p)"
+                >
+                  🕒 Historial
+                </button>
+
+                <button
+                  class="edit-btn"
+                  *ngIf="auth.canEditOrder()"
+                  (click)="editarPedido(p)"
+                >
+                  ✏️ Editar
+                </button>
+
+                <button
+                  class="delete-btn"
+                  *ngIf="auth.canDeleteOrder()"
+                  (click)="eliminarPedido(p)"
+                >
+                  🗑 Eliminar
+                </button>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+          <tr *ngIf="pedidosVistaRows.length === 0">
+
+            <td colspan="21" class="empty">
+              No hay pedidos registrados.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+      </div>
+
+    </section>
+
+    <!-- CLIENTES -->
+    <section
+      class="table-card"
+      *ngIf="vistaActual === 'CLIENTES'"
+    >
+
+      <div class="filters-card">
+
+        <input
+          type="text"
+          placeholder="Buscar cliente..."
+          [(ngModel)]="filtroClienteTexto"
+          (input)="filtrarClientes()"
+        >
+      </div>
+
+      <div class="table-wrapper">
+      <table>
+
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>DNI / RUC</th>
+            <th>Teléfono</th>
+            <th>Correo</th>
+            <th>Dirección</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr *ngFor="let c of clientesFiltrados; trackBy: trackByClienteId">
+
+            <td>{{ c.id }}</td>
+            <td>{{ c.nombre }}</td>
+            <td>{{ c.documento }}</td>
+            <td>{{ c.telefono || '-' }}</td>
+            <td>{{ c.correo || '-' }}</td>
+            <td>{{ c.direccion || '-' }}</td>
+            <td>
+              <div class="actions">
+
+                <button
+                  type="button"
+                  class="edit-btn"
+                  (click)="abrirEditarCliente(c)"
+                >
+                  ✏️ Editar
+                </button>
+
+                <button
+                  class="delete-btn"
+                  (click)="eliminarCliente(c)"
+                >
+                  🗑 Eliminar
+                </button>
+
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+
+
+<!-- MODAL PEDIDO -->
+<div class="modal-backdrop" *ngIf="mostrarModal">
+  <div class="modal">
+
+    <div class="modal-header">
+      <h2>{{ modoEdicion ? 'Editar Pedido' : 'Nuevo Pedido' }}</h2>
+      <button class="close-btn" type="button" (click)="cerrarModal()">✕</button>
+    </div>
+
+    <form class="form-grid premium-form" (ngSubmit)="guardarPedido()">
+
+      <div class="form-section">
+        <h3>Datos del pedido</h3>
+
+        <div class="form-row">
+          <div class="field">
+            <label>N° Orden <span>*</span></label>
+            <input type="text" [(ngModel)]="nuevoPedido.numeroOrden" name="numeroOrden" required>
+          </div>
+
+          <div class="field">
+            <label>Cliente <span>*</span></label>
+            <div class="cliente-select">
+              <select [(ngModel)]="nuevoPedido.cliente" name="cliente" required>
+                <option [ngValue]="null">Seleccione cliente</option>
+                <option *ngFor="let c of clientes; trackBy: trackByClienteOption" [ngValue]="c">{{ c.nombre }} - {{ c.documento }}</option>
+              </select>
+
+              <button type="button" class="client-mini-btn" (click)="abrirModalClienteDesdePedido()">
+                + Nuevo cliente
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Vendedora <span>*</span></label>
+            <select [(ngModel)]="nuevoPedido.vendedora" name="vendedora" required [disabled]="tieneVendedoraFijadaPorRol()">
+              <option value="">Seleccione vendedora</option>
+              <option *ngFor="let ov of opcionesVendedoraSelect(); trackBy: trackByVendedoraOpt" [value]="ov.value">{{ ov.label }}</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Total del pedido</label>
+            <input type="number" min="0" step="0.01" [(ngModel)]="nuevoPedido.total" name="total">
+          </div>
+
+          <div class="field">
+            <label>Adelanto</label>
+            <input type="number" min="0" step="0.01" [(ngModel)]="nuevoPedido.adelanto" name="adelanto">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Fecha de entrega</label>
+            <input type="date" [(ngModel)]="nuevoPedido.fechaEntrega" name="fechaEntrega">
+          </div>
+
+          <div class="field">
+            <label>Hora de entrega</label>
+            <input type="time" [(ngModel)]="nuevoPedido.horaEntrega" name="horaEntrega">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Observaciones generales</label>
+          <textarea [(ngModel)]="nuevoPedido.observaciones" name="observaciones"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="detalle-header">
+          <h3>Materiales del pedido</h3>
+          <button type="button" class="add-detail-btn" (click)="agregarDetalle()">+ Añadir material</button>
+        </div>
+
+        <div class="detalle-card" *ngFor="let d of nuevoPedido.detalles; let i = index; trackBy: trackByIndex">
+          <div class="detalle-top">
+            <h4>Material {{ i + 1 }}</h4>
+            <button type="button" class="delete-btn" (click)="eliminarDetalle(i)">🗑 Eliminar</button>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>Cantidad de planchas</label>
+              <input type="number" min="1" step="1" [(ngModel)]="d.cantidad" name="cantidadDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Material / Color</label>
+              <input type="text" [(ngModel)]="d.material" name="materialDetalle{{ i }}">
+            </div>
+
+            <div class="field">
+              <label>Máquina</label>
+              <select [(ngModel)]="d.maquina" name="maquinaDetalle{{ i }}">
+                <option value="ESCUADRADORA">Escuadradora</option>
+                <option value="SECCIONADORA">Seccionadora</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row three">
+            <div class="field">
+              <label>Cortes</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.cortes" name="cortesDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Ranuras</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.ranuras" name="ranurasDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Perforaciones</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.perforaciones" name="perforacionesDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+          </div>
+
+          <div class="form-row four">
+            <div class="field">
+              <label>Canto Delgado</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.cantoDelgado" name="cantoDelgadoDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Canto Grueso</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.cantoGrueso" name="cantoGruesoDetalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Canto Delgado 36mm</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.cantoDelgado36mm" name="cantoDelgado36Detalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+
+            <div class="field">
+              <label>Canto Grueso 36mm</label>
+              <input type="number" min="0" step="1" [(ngModel)]="d.cantoGrueso36mm" name="cantoGrueso36Detalle{{ i }}" (input)="normalizarDetalle(d)">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Observación del material</label>
+            <input type="text" [(ngModel)]="d.observaciones" name="observacionesDetalle{{ i }}">
+          </div>
+
+          <div class="especiales-section">
+            <div class="detalle-header">
+              <h4>Especiales</h4>
+              <button type="button" class="add-detail-btn" (click)="agregarEspecial(d)">+ Añadir especial</button>
+            </div>
+
+            <div class="especial-row" *ngFor="let e of d.especiales; let j = index; trackBy: trackByIndex">
+              <input type="number" min="1" step="1" placeholder="Cantidad" [(ngModel)]="e.cantidad" name="especialCantidad{{ i }}_{{ j }}" (input)="normalizarEspecial(e)">
+              <input type="text" placeholder="Descripción del especial" [(ngModel)]="e.descripcion" name="especialDescripcion{{ i }}_{{ j }}">
+              <button type="button" class="delete-btn" (click)="eliminarEspecial(d, j)">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty" *ngIf="!nuevoPedido.detalles || nuevoPedido.detalles.length === 0">
+          Aún no agregaste materiales. Presiona “+ Añadir material”.
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="cerrarModal()">Cancelar</button>
+        <button type="submit" class="save-btn">{{ modoEdicion ? 'Guardar cambios' : 'Crear pedido' }}</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="mostrarConfirmacion">
+  <div class="confirm-modal">
+    <div class="confirm-icon">!</div>
+
+    <h2>{{ tituloConfirmacion }}</h2>
+    <p>{{ mensajeConfirmacion }}</p>
+
+    <div class="confirm-actions">
+      <button class="cancel-confirm" (click)="cerrarConfirmacion()">Cancelar</button>
+      <button class="accept-confirm" (click)="confirmarAccion()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="mostrarAuditoria">
+  <div class="modal audit-modal">
+
+    <div class="modal-header">
+      <div>
+        <h2>Historial del Pedido</h2>
+        <p>Orden: {{ pedidoAuditoria?.numeroOrden }} — {{ pedidoAuditoria?.cliente?.nombre }}</p>
+      </div>
+
+      <button class="close-btn" (click)="cerrarAuditoria()">✕</button>
+    </div>
+
+    <div class="audit-list" *ngIf="auditoriaSeleccionada.length > 0">
+      <div class="audit-item" *ngFor="let a of auditoriaSeleccionada; trackBy: trackByAuditoria">
+        <div class="audit-icon">↻</div>
+
+        <div>
+          <strong>{{ a.estadoAnterior }} → {{ a.estadoNuevo }}</strong>
+          <p>
+            {{ a.fechaCambio }} - {{ a.horaCambio }}
+          </p>
+          <span>
+            {{ a.usuarioNombre }} | {{ a.usuarioCorreo }} | {{ a.usuarioRol }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty" *ngIf="auditoriaSeleccionada.length === 0">
+      Este pedido aún no tiene cambios de estado registrados.
+    </div>
+
+  </div>
+</div>
+
+<!-- REGISTRAR PAGO -->
+<div class="modal-backdrop" *ngIf="mostrarModalPago">
+  <div class="modal small-modal">
+    <div class="modal-header">
+      <div>
+        <h2>Registrar abono</h2>
+        <p *ngIf="pedidoPagoSeleccion">Pedido {{ pedidoPagoSeleccion.numeroOrden }} — {{ pedidoPagoSeleccion.cliente?.nombre }}</p>
+      </div>
+      <button type="button" class="close-btn" (click)="cerrarModalPago()">✕</button>
+    </div>
+    <form class="premium-form" (ngSubmit)="guardarRegistroPago()">
+      <div class="form-section">
+        <div class="field">
+          <label>Monto ({{ configMapa['moneda.simbolo'] || 'S/' }})</label>
+          <input type="number" name="montoPago" [(ngModel)]="formPago.monto" min="0.01" step="0.01" required />
+        </div>
+        <div class="field">
+          <label>Método de pago</label>
+          <select name="metodoPago" [(ngModel)]="formPago.metodoPago" required>
+            <option value="BCP">BCP</option>
+            <option value="YAPE">Yape</option>
+            <option value="BBVA">BBVA</option>
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="VISA">Visa</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Nota (opcional)</label>
+          <input type="text" name="notaPago" [(ngModel)]="formPago.nota" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="cerrarModalPago()">Cancelar</button>
+        <button type="submit" class="save-btn">Guardar pago</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- HISTORIAL DE PAGOS -->
+<div class="modal-backdrop" *ngIf="mostrarHistorialPagos">
+  <div class="modal audit-modal">
+    <div class="modal-header">
+      <div>
+        <h2>Auditoría de pagos</h2>
+        <p *ngIf="pedidoPagoSeleccion">Pedido {{ pedidoPagoSeleccion.numeroOrden }} — {{ pedidoPagoSeleccion.cliente?.nombre }}</p>
+      </div>
+      <button type="button" class="close-btn" (click)="cerrarHistorialPagos()">✕</button>
+    </div>
+    <div class="audit-list" *ngIf="historialPagos.length > 0">
+      <div class="audit-item" *ngFor="let h of historialPagos; trackBy: trackByPagoHistorial">
+        <div class="audit-icon">💳</div>
+        <div>
+          <strong>{{ h.metodoPago }} — {{ h.monto | number:'1.2-2' }}</strong>
+          <p>{{ h.fechaRegistro }} {{ h.horaRegistro }}</p>
+          <span>{{ h.usuarioNombre }} | {{ h.usuarioCorreo }} | {{ h.usuarioRol }}</span>
+          <p *ngIf="h.nota" class="audit-nota">{{ h.nota }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="empty" *ngIf="historialPagos.length === 0">No hay abonos registrados para este pedido.</div>
+  </div>
+</div>
+
+<!-- USUARIO (admin) -->
+<div class="modal-backdrop" *ngIf="mostrarModalUsuario">
+  <div class="modal small-modal">
+    <div class="modal-header">
+      <h2>{{ modoEdicionUsuario ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+      <button type="button" class="close-btn" (click)="cerrarModalUsuario()">✕</button>
+    </div>
+    <form class="premium-form" (ngSubmit)="guardarUsuarioAdminForm()">
+      <div class="form-section">
+        <div class="field full">
+          <label>Nombre</label>
+          <input type="text" name="uNombre" [(ngModel)]="usuarioForm.nombre" required />
+        </div>
+        <div class="field full">
+          <label>Correo</label>
+          <input type="email" name="uCorreo" [(ngModel)]="usuarioForm.correo" required />
+        </div>
+        <div class="field full">
+          <label>Rol</label>
+          <select name="uRol" [(ngModel)]="usuarioForm.rol" required>
+            <option *ngFor="let r of rolesMatrixRoles; trackBy: trackByString" [value]="r">{{ rolEtiqueta(r) }}</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Contraseña {{ modoEdicionUsuario ? '(dejar vacío para no cambiar)' : '(vacío = 123456)' }}</label>
+          <input type="password" name="uPass" [(ngModel)]="usuarioForm.password" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label><input type="checkbox" [(ngModel)]="usuarioForm.activo" name="uActivo" /> Usuario activo</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" (click)="cerrarModalUsuario()">Cancelar</button>
+        <button type="submit" class="save-btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div
+  class="modal-backdrop"
+  *ngIf="mostrarModalCliente"
+>
+
+  <div class="modal small-modal">
+
+    <div class="modal-header">
+      <h2>{{ modoEdicionCliente ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
+
+      <button
+        class="close-btn"
+        type="button"
+        (click)="cerrarModalCliente()"
+      >
+        ✕
+      </button>
+    </div>
+
+    <form
+      class="premium-form"
+      (ngSubmit)="guardarCliente()"
+    >
+
+      <div class="form-section">
+
+        <div class="form-row">
+
+          <div class="field">
+            <label>Tipo Documento</label>
+
+            <select
+              [(ngModel)]="nuevoCliente.tipoDocumento"
+              name="tipoDocumento"
+            >
+              <option value="DNI">DNI</option>
+              <option value="RUC">RUC</option>
+              <option value="CE">CE</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Número documento</label>
+
+            <input
+              type="text"
+              maxlength="11"
+              inputmode="numeric"
+              [ngModel]="nuevoCliente.numeroDocumento"
+              (ngModelChange)="nuevoCliente.numeroDocumento = limpiarSoloNumeros($event, 11)"
+              name="numeroDocumento"
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div class="field full">
+            <label>Nombre / Razón social</label>
+
+            <input
+              [(ngModel)]="nuevoCliente.nombre"
+              name="nombre"
+              required
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div class="field">
+            <label>Teléfono</label>
+
+            <input
+              type="text"
+              maxlength="9"
+              inputmode="numeric"
+              [ngModel]="nuevoCliente.telefono"
+              (ngModelChange)="nuevoCliente.telefono = limpiarSoloNumeros($event, 9)"
+              name="telefono"
+            >
+          </div>
+
+          <div class="field">
+            <label>Correo</label>
+
+            <input
+              [(ngModel)]="nuevoCliente.correo"
+              name="correo"
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div class="field full">
+            <label>Dirección</label>
+
+            <input
+              [(ngModel)]="nuevoCliente.direccion"
+              name="direccion"
+            >
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="cancel-btn"
+          (click)="cerrarModalCliente()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="save-btn"
+        >
+          {{ modoEdicionCliente ? 'Guardar cambios' : 'Guardar cliente' }}
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
