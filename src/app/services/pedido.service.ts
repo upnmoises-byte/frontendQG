@@ -28,7 +28,7 @@ export interface RegistrarPagoPayload {
 })
 export class PedidoService {
 
-  private readonly API = `${environment.apiUrl}/api/pedidos`;
+  private readonly API = `${environment.apiUrl}/pedidos`;
 
   constructor(private http: HttpClient) {}
 

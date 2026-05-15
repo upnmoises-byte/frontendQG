@@ -13,7 +13,7 @@ const STORAGE_TOKEN = 'token';
 })
 export class AuthService {
 
-  private readonly apiUrl = `${environment.apiUrl}/api/auth`;
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
 
   /** Sesión actual (persistida en localStorage). */
   readonly usuario = signal<UsuarioSesion | null>(this.readUsuario());

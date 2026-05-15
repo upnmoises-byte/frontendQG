@@ -19,7 +19,7 @@ export interface ClientePayload {
 })
 export class ClienteService {
 
-  private readonly base = `${environment.apiUrl}/api/clientes`;
+  private readonly base = `${environment.apiUrl}/clientes`;
 
   constructor(private http: HttpClient) {}
 
