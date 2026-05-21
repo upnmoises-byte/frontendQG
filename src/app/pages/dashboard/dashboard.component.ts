@@ -178,7 +178,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   mostrarHistorialPagos = false;
   pedidoPagoSeleccion: Pedido | null = null;
   historialPagos: any[] = [];
-  formPago: RegistrarPagoPayload = { monto: 0, metodoPago: 'BCP', nota: '' };
+  formPago: RegistrarPagoPayload = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
+  guardandoPago = false;
 
   mostrarModalUsuario = false;
   modoEdicionUsuario = false;
@@ -365,7 +366,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.filtroRepVendedora && p.vendedora !== this.filtroRepVendedora) {
       return false;
     }
-    if (this.filtroRepEstado && p.estado !== this.filtroRepEstado) {
+    if (
+      this.filtroRepEstado &&
+      p.estado !== this.filtroRepEstado &&
+      !(p.detalles || []).some((d) => (d.estado ?? p.estado) === this.filtroRepEstado)
+    ) {
       return false;
     }
     if (
@@ -512,7 +517,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const coincideCliente =
         !this.filtroCliente || nombreCliente.includes(this.filtroCliente.toLowerCase());
       const coincideVendedora = !this.filtroVendedora || p.vendedora === this.filtroVendedora;
-      const coincideEstado = !this.filtroEstado || p.estado === this.filtroEstado;
+      const coincideEstado =
+        !this.filtroEstado ||
+        p.estado === this.filtroEstado ||
+        (p.detalles || []).some((d) => (d.estado ?? p.estado) === this.filtroEstado);
       const coincideMaquina =
         !this.filtroMaquina ||
         p.maquina === this.filtroMaquina ||
@@ -529,17 +537,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.vistaActual === 'PAGOS') {
       this.pedidosVistaRows = filtrados.map((p) => this.filaUnicaPorPedido(p));
     } else if (this.vistaActual === 'CORTE') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados.filter((p) => p.estado === 'CORTE')).filter(
-        (p) => p.maquina?.toUpperCase() === this.subVistaCorte
-      );
+      this.pedidosVistaRows = this.pedidoARenglones(filtrados)
+        .filter((r) => r.estado === 'CORTE' && r.maquina?.toUpperCase() === this.subVistaCorte);
     } else if (this.vistaActual === 'CANTEADO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados.filter((p) => p.estado === 'CANTEADO'));
+      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'CANTEADO');
     } else if (this.vistaActual === 'ESPECIALES') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados.filter((p) => p.estado === 'ESPECIALES'));
+      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'ESPECIALES');
     } else if (this.vistaActual === 'DESPACHO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados.filter((p) => p.estado === 'DESPACHO'));
+      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'DESPACHO');
     } else if (this.vistaActual === 'ENTREGADO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados.filter((p) => p.estado === 'ENTREGADO'));
+      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'ENTREGADO');
     } else {
       this.pedidosVistaRows = this.pedidoARenglones(filtrados);
     }
@@ -605,10 +612,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         return p.detalles.map(d => {
           const especiales = d.especiales || [];
+          const estadoLinea = d.estado ?? p.estado ?? 'CORTE';
           return {
             ...p,
             _pedido: p,
             detalleId: d.id,
+            estado: estadoLinea,
             cantidad: d.cantidad,
             colorPrincipal: d.material,
             maquina: d.maquina,
@@ -681,6 +690,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         cantidad: 0,
         material: '',
         maquina: 'ESCUADRADORA',
+        estado: 'CORTE',
 
         cortes: 0,
         ranuras: 0,
@@ -999,17 +1009,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
   abrirModalRegistrarPago(row: any): void {
     const p = row._pedido || row;
     this.pedidoPagoSeleccion = p;
-    this.formPago = { monto: 0, metodoPago: 'BCP', nota: '' };
+    this.guardandoPago = false;
+    this.formPago = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
     this.mostrarModalPago = true;
     this.cdr.markForCheck();
   }
 
   cerrarModalPago(): void {
     this.mostrarModalPago = false;
+    this.guardandoPago = false;
     this.pedidoPagoSeleccion = null;
   }
 
+  metodoPagoRequiereCodigo(): boolean {
+    return (this.formPago.metodoPago || '').toUpperCase() !== 'EFECTIVO';
+  }
+
+  onMetodoPagoChange(): void {
+    if (!this.metodoPagoRequiereCodigo()) {
+      this.formPago.codigoPago = '';
+    }
+    this.cdr.markForCheck();
+  }
+
   guardarRegistroPago(): void {
+    if (this.guardandoPago) {
+      return;
+    }
     const ped = this.pedidoPagoSeleccion;
     if (!ped?.id) {
       return;
@@ -1019,20 +1045,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.notify.warning('Indique un monto mayor a 0');
       return;
     }
+    const metodo = (this.formPago.metodoPago || '').trim();
+    const codigo = (this.formPago.codigoPago || '').trim();
+    if (this.metodoPagoRequiereCodigo() && !codigo) {
+      this.notify.warning('Indique el código de operación (voucher, Yape, transferencia, etc.)');
+      return;
+    }
     const body: RegistrarPagoPayload = {
       monto: m,
-      metodoPago: this.formPago.metodoPago,
+      metodoPago: metodo,
+      codigoPago: this.metodoPagoRequiereCodigo() ? codigo : undefined,
       nota: this.formPago.nota?.trim() || undefined
     };
+    this.guardandoPago = true;
+    this.cdr.markForCheck();
     this.pedidoService.registrarPagoPedido(ped.id, body).subscribe({
       next: () => {
+        this.guardandoPago = false;
         this.notify.success('Pago registrado correctamente.');
         this.cerrarModalPago();
         this.cargarPedidos();
       },
       error: (err: unknown) => {
+        this.guardandoPago = false;
         console.error(err);
         this.notify.error(this.mensajeHttp(err, 'No se pudo registrar el pago'));
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1300,6 +1338,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.nuevoPedido.estado = 'CORTE';
     this.nuevoPedido.prioridad = this.pedidos.length + 1;
+    this.nuevoPedido.detalles.forEach((d) => {
+      if (!d.estado) {
+        d.estado = 'CORTE';
+      }
+    });
 
     this.pedidoService.crear(this.nuevoPedido).subscribe({
       next: () => {
@@ -1337,14 +1380,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   recalcularDashboard() {
+    const lineas = this.pedidoARenglones(this.pedidos);
     this.totalPedidos = this.pedidos.length;
-    this.totalCorte = this.pedidos.filter((p) => p.estado === 'CORTE').length;
-    this.totalCanteado = this.pedidos.filter((p) => p.estado === 'CANTEADO').length;
-    this.totalDespacho = this.pedidos.filter((p) => p.estado === 'DESPACHO').length;
-    this.totalEntregados = this.pedidos.filter((p) => p.estado === 'ENTREGADO').length;
-    this.totalEspeciales = this.pedidos.filter((p) => p.estado === 'ESPECIALES').length;
+    this.totalCorte = lineas.filter((r) => r.estado === 'CORTE').length;
+    this.totalCanteado = lineas.filter((r) => r.estado === 'CANTEADO').length;
+    this.totalDespacho = lineas.filter((r) => r.estado === 'DESPACHO').length;
+    this.totalEntregados = lineas.filter((r) => r.estado === 'ENTREGADO').length;
+    this.totalEspeciales = lineas.filter((r) => r.estado === 'ESPECIALES').length;
 
-    const detallesCorte = this.pedidoARenglones(this.pedidos.filter((p) => p.estado === 'CORTE'));
+    const detallesCorte = lineas.filter((r) => r.estado === 'CORTE');
     this.totalEscuadradora = detallesCorte.filter((p) => p.maquina?.toUpperCase() === 'ESCUADRADORA').length;
     this.totalSeccionadora = detallesCorte.filter((p) => p.maquina?.toUpperCase() === 'SECCIONADORA').length;
     this.planchasPendientesEscuadradora = detallesCorte
@@ -1461,8 +1505,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const estadoAnteriorFila = row.estado;
+
     const revertir = (): void => {
-      row.estado = base.estado;
+      row.estado = estadoAnteriorFila;
       this.cdr.markForCheck();
     };
 
@@ -1482,10 +1528,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const actualizado: Pedido = {
-      ...base,
-      estado: nuevoEstado
-    };
+    const actualizado: Pedido = JSON.parse(JSON.stringify(base));
+
+    if (row.detalleId && actualizado.detalles?.length) {
+      const det = actualizado.detalles.find((d) => d.id === row.detalleId);
+      if (det) {
+        det.estado = nuevoEstado;
+      }
+    } else {
+      actualizado.estado = nuevoEstado;
+      actualizado.detalles?.forEach((d) => {
+        d.estado = nuevoEstado;
+      });
+    }
 
     this.pedidoService.actualizar(base.id, actualizado, this.usuarioParaAuditoria()).subscribe({
       next: () => this.cargarPedidos(),

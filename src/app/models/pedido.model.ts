@@ -58,6 +58,8 @@ export interface PedidoDetalle {
   cantidad: number;
   material: string;
   maquina: string;
+  /** Estado de producción de este material (independiente por línea). */
+  estado?: string;
   cortes: number;
   ranuras: number;
   perforaciones: number;

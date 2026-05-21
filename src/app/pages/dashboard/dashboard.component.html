@@ -1126,7 +1126,7 @@
         </div>
         <div class="field">
           <label>Método de pago</label>
-          <select name="metodoPago" [(ngModel)]="formPago.metodoPago" required>
+          <select name="metodoPago" [(ngModel)]="formPago.metodoPago" (ngModelChange)="onMetodoPagoChange()" required>
             <option value="BCP">BCP</option>
             <option value="YAPE">Yape</option>
             <option value="BBVA">BBVA</option>
@@ -1134,14 +1134,28 @@
             <option value="VISA">Visa</option>
           </select>
         </div>
+        <div class="field full" *ngIf="metodoPagoRequiereCodigo()">
+          <label>Código de operación <span>*</span></label>
+          <input
+            type="text"
+            name="codigoPago"
+            [(ngModel)]="formPago.codigoPago"
+            required
+            maxlength="64"
+            placeholder="Nº operación, voucher Yape, etc."
+            autocomplete="off"
+          />
+        </div>
         <div class="field full">
           <label>Nota (opcional)</label>
           <input type="text" name="notaPago" [(ngModel)]="formPago.nota" />
         </div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="cancel-btn" (click)="cerrarModalPago()">Cancelar</button>
-        <button type="submit" class="save-btn">Guardar pago</button>
+        <button type="button" class="cancel-btn" (click)="cerrarModalPago()" [disabled]="guardandoPago">Cancelar</button>
+        <button type="submit" class="save-btn" [disabled]="guardandoPago">
+          {{ guardandoPago ? 'Guardando…' : 'Guardar pago' }}
+        </button>
       </div>
     </form>
   </div>
@@ -1162,6 +1176,7 @@
         <div class="audit-icon">💳</div>
         <div>
           <strong>{{ h.metodoPago }} — {{ h.monto | number:'1.2-2' }}</strong>
+          <p *ngIf="h.codigoPago" class="audit-codigo">Cód. operación: {{ h.codigoPago }}</p>
           <p>{{ h.fechaRegistro }} {{ h.horaRegistro }}</p>
           <span>{{ h.usuarioNombre }} | {{ h.usuarioCorreo }} | {{ h.usuarioRol }}</span>
           <p *ngIf="h.nota" class="audit-nota">{{ h.nota }}</p>

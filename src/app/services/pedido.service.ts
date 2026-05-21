@@ -9,6 +9,7 @@ export interface PagoPedidoDto {
   pedidoId: number;
   monto: number;
   metodoPago: string;
+  codigoPago?: string | null;
   nota?: string | null;
   fechaRegistro: string;
   horaRegistro: string;
@@ -20,6 +21,8 @@ export interface PagoPedidoDto {
 export interface RegistrarPagoPayload {
   monto: number;
   metodoPago: string;
+  /** Obligatorio si el método no es EFECTIVO. */
+  codigoPago?: string | null;
   nota?: string | null;
 }
 
