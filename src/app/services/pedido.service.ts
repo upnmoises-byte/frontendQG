@@ -82,6 +82,20 @@ export class PedidoService {
     return this.http.post<PagoPedidoDto>(`${this.API}/${id}/pagos`, body);
   }
 
+  actualizarEstadoDetalle(
+    pedidoId: number,
+    detalleId: number,
+    estado: string,
+    usuario: { nombre: string; correo: string; rol: string }
+  ) {
+    return this.http.put<Pedido>(`${this.API}/${pedidoId}/detalles/${detalleId}/estado`, {
+      estado,
+      usuarioNombre: usuario.nombre,
+      usuarioCorreo: usuario.correo,
+      usuarioRol: usuario.rol
+    });
+  }
+
   eliminar(id: number) {
     return this.http.delete(
       `${this.API}/${id}`

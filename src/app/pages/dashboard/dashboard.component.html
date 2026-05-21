@@ -586,7 +586,7 @@
             (dragover)="permitirSoltar($event)"
             (drop)="soltarPedido(i)"
             class="draggable-row"
-            [class.fila-deuda]="(vistaActual === 'DESPACHO' || vistaActual === 'PAGOS') && p.saldoPendiente > 0"
+            [class.fila-deuda]="(vistaActual === 'DESPACHO' || vistaActual === 'PAGOS') && (p.saldoPendiente ?? 0) > 0"
           >
 
             <!-- PRIORIDAD -->
@@ -626,7 +626,7 @@
 
             <!-- CLIENTE -->
             <td *ngIf="columnKeys.has('cliente')">
-              {{ p.cliente?.nombre || '-' }}
+              {{ p.cliente || '-' }}
             </td>
 
             <!-- CANTIDAD -->
@@ -740,14 +740,14 @@
             <td *ngIf="columnKeys.has('pagos')">
 
               <span
-                *ngIf="p.saldoPendiente > 0"
+                *ngIf="(p.saldoPendiente ?? 0) > 0"
                 class="deuda-badge"
               >
                 DEBE S/ {{ p.saldoPendiente | number:'1.2-2' }}
               </span>
 
               <span
-                *ngIf="!p.saldoPendiente || p.saldoPendiente <= 0"
+                *ngIf="(p.saldoPendiente ?? 0) <= 0"
                 class="pagado-badge"
               >
                 CANCELADO

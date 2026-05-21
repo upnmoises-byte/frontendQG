@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PedidoService, RegistrarPagoPayload } from '../../services/pedido.service';
-import { Pedido } from '../../models/pedido.model';
+import { Pedido, PedidoDetalle, PedidoVistaDetalle } from '../../models/pedido.model';
 import { Cliente } from '../../models/cliente.model';
 import { AuthService } from '../../services/auth.service';
 import { ClienteService, ClientePayload } from '../../services/cliente.service';
@@ -29,7 +29,7 @@ const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
   ],
   CORTE: [
     'prioridad', 'estado', 'numeroOrden', 'cliente', 'cantidad',
-    'colores', 'cortes', 'ranuras', 'observaciones', 'maquina',
+    'colores', 'cortes', 'ranuras', 'perforaciones', 'observaciones', 'maquina',
     'fechaIngreso', 'fechaEntrega', 'horaEntrega', 'acciones'
   ],
   CANTEADO: [
@@ -70,8 +70,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   vistaActual = 'DASHBOARD';
   subVistaCorte = 'ESCUADRADORA';
 
-  /** Filas ya aplanadas para la tabla (evita getters pesados en plantilla). */
-  pedidosVistaRows: any[] = [];
+  /** Filas por material/detalle (una fila = un material o pedido sin detalles). */
+  pedidosVistaRows: PedidoVistaDetalle[] = [];
   /** Columnas visibles en la vista actual. */
   columnKeys = new Set<string>();
 
@@ -534,21 +534,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return true;
     });
 
+    const filas = this.pedidosADetalleVista(filtrados);
+
     if (this.vistaActual === 'PAGOS') {
       this.pedidosVistaRows = filtrados.map((p) => this.filaUnicaPorPedido(p));
     } else if (this.vistaActual === 'CORTE') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados)
-        .filter((r) => r.estado === 'CORTE' && r.maquina?.toUpperCase() === this.subVistaCorte);
+      this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'CORTE', this.subVistaCorte);
     } else if (this.vistaActual === 'CANTEADO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'CANTEADO');
+      this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'CANTEADO');
     } else if (this.vistaActual === 'ESPECIALES') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'ESPECIALES');
+      this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'ESPECIALES');
     } else if (this.vistaActual === 'DESPACHO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'DESPACHO');
+      this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'DESPACHO');
     } else if (this.vistaActual === 'ENTREGADO') {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados).filter((r) => r.estado === 'ENTREGADO');
+      this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'ENTREGADO');
     } else {
-      this.pedidosVistaRows = this.pedidoARenglones(filtrados);
+      this.pedidosVistaRows = filas;
     }
 
     this.cdr.markForCheck();
@@ -558,10 +559,120 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.rebuildVista();
   }
 
-  trackByPedidoRow(_index: number, row: any): string {
-    const id = row.id ?? 'sin-id';
-    const det = row.detalleId ?? 'root';
-    return `${id}-${det}`;
+  trackByPedidoRow(_index: number, row: PedidoVistaDetalle): string {
+    return `${row.pedidoId}-${row.detalleId ?? 'root'}`;
+  }
+
+  /** Estado efectivo de un material: detalle primero, luego pedido. */
+  estadoLineaPedido(pedido: Pedido, detalle?: PedidoDetalle): string {
+    return (detalle?.estado ?? pedido.estado ?? 'CORTE').toUpperCase();
+  }
+
+  pedidosADetalleVista(lista: Pedido[]): PedidoVistaDetalle[] {
+    return lista.flatMap((pedido) => {
+      if (!pedido.id) {
+        return [];
+      }
+      if (!pedido.detalles?.length) {
+        return [this.filaPedidoSinDetalles(pedido)];
+      }
+      return pedido.detalles.map((detalle) => this.filaDesdeDetalle(pedido, detalle));
+    });
+  }
+
+  filtrarFilasPorZona(
+    filas: PedidoVistaDetalle[],
+    estadoZona: string,
+    maquina?: string
+  ): PedidoVistaDetalle[] {
+    const zona = estadoZona.toUpperCase();
+    return filas.filter((fila) => {
+      if (fila.esFilaPedidoCompleto) {
+        return false;
+      }
+      if (fila.estado !== zona) {
+        return false;
+      }
+      if (maquina && fila.maquina?.toUpperCase() !== maquina.toUpperCase()) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private filaDesdeDetalle(pedido: Pedido, detalle: PedidoDetalle): PedidoVistaDetalle {
+    const especiales = detalle.especiales || [];
+    const estado = this.estadoLineaPedido(pedido, detalle);
+    const saldo = Math.max(Number(pedido.total || 0) - Number(pedido.adelanto || 0), 0);
+
+    return {
+      pedidoId: pedido.id!,
+      detalleId: detalle.id,
+      numeroOrden: pedido.numeroOrden,
+      cliente: pedido.cliente?.nombre ?? '-',
+      cantidad: Number(detalle.cantidad || 0),
+      color: detalle.material || '-',
+      cortes: Number(detalle.cortes || 0),
+      ranuras: Number(detalle.ranuras || 0),
+      perforaciones: Number(detalle.perforaciones || 0),
+      maquina: detalle.maquina || pedido.maquina || '-',
+      observaciones: detalle.observaciones || pedido.observaciones || '-',
+      estado,
+      pedidoOriginal: pedido,
+      detalleOriginal: detalle,
+      id: pedido.id!,
+      _pedido: pedido,
+      prioridad: pedido.prioridad,
+      vendedora: pedido.vendedora,
+      fechaIngreso: pedido.fechaIngreso,
+      horaIngreso: pedido.horaIngreso,
+      fechaEntrega: pedido.fechaEntrega,
+      horaEntrega: pedido.horaEntrega,
+      colorPrincipal: detalle.material || '-',
+      colorSecundario: pedido.colorSecundario,
+      colorTercero: pedido.colorTercero,
+      cantoDelgado: detalle.cantoDelgado,
+      cantoGrueso: detalle.cantoGrueso,
+      cantoDelgado36mm: detalle.cantoDelgado36mm,
+      cantoGrueso36mm: detalle.cantoGrueso36mm,
+      cantidadEspeciales: especiales.reduce((t, e) => t + Number(e.cantidad || 0), 0),
+      descripcionEspeciales: especiales.map((e) => `${e.cantidad} ${e.descripcion}`).join(' / '),
+      saldoPendiente: saldo,
+      esFilaPedidoCompleto: false
+    };
+  }
+
+  private filaPedidoSinDetalles(pedido: Pedido): PedidoVistaDetalle {
+    const estado = this.estadoLineaPedido(pedido);
+    const saldo = Math.max(Number(pedido.total || 0) - Number(pedido.adelanto || 0), 0);
+
+    return {
+      pedidoId: pedido.id!,
+      numeroOrden: pedido.numeroOrden,
+      cliente: pedido.cliente?.nombre ?? '-',
+      cantidad: Number(pedido.cantidad || 0),
+      color: pedido.colorPrincipal || '-',
+      cortes: Number(pedido.cortes || 0),
+      ranuras: Number(pedido.ranuras || 0),
+      perforaciones: Number(pedido.perforaciones || 0),
+      maquina: pedido.maquina || '-',
+      observaciones: pedido.observaciones || '-',
+      estado,
+      pedidoOriginal: pedido,
+      id: pedido.id!,
+      _pedido: pedido,
+      prioridad: pedido.prioridad,
+      vendedora: pedido.vendedora,
+      fechaIngreso: pedido.fechaIngreso,
+      horaIngreso: pedido.horaIngreso,
+      fechaEntrega: pedido.fechaEntrega,
+      horaEntrega: pedido.horaEntrega,
+      colorPrincipal: pedido.colorPrincipal || '-',
+      colorSecundario: pedido.colorSecundario,
+      colorTercero: pedido.colorTercero,
+      saldoPendiente: saldo,
+      esFilaPedidoCompleto: false
+    };
   }
 
   trackByClienteId(_index: number, c: Cliente): number {
@@ -604,63 +715,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return h?.id ?? _index;
   }
 
-  pedidoARenglones(lista: Pedido[]): any[] {
-      return lista.flatMap(p => {
-        if (!p.detalles || p.detalles.length === 0) {
-          return [{ ...p, _pedido: p }];
-        }
-
-        return p.detalles.map(d => {
-          const especiales = d.especiales || [];
-          const estadoLinea = d.estado ?? p.estado ?? 'CORTE';
-          return {
-            ...p,
-            _pedido: p,
-            detalleId: d.id,
-            estado: estadoLinea,
-            cantidad: d.cantidad,
-            colorPrincipal: d.material,
-            maquina: d.maquina,
-            cortes: d.cortes,
-            ranuras: d.ranuras,
-            perforaciones: d.perforaciones,
-            cantoDelgado: d.cantoDelgado,
-            cantoGrueso: d.cantoGrueso,
-            cantoDelgado36mm: d.cantoDelgado36mm,
-            cantoGrueso36mm: d.cantoGrueso36mm,
-            cantidadEspeciales: especiales.reduce((t, e) => t + Number(e.cantidad || 0), 0),
-            descripcionEspeciales: especiales.map(e => `${e.cantidad} ${e.descripcion}`).join(' / '),
-            observaciones: d.observaciones || p.observaciones
-          };
-        });
-      });
-    }
-
-  /** Una sola fila por pedido (totales de pago a nivel pedido, no por detalle). */
-  filaUnicaPorPedido(p: Pedido): any {
+  /** Una fila por pedido (vista Pagos: totales y saldo a nivel pedido). */
+  filaUnicaPorPedido(p: Pedido): PedidoVistaDetalle {
     const saldo = Math.max(Number(p.total || 0) - Number(p.adelanto || 0), 0);
-    const row: any = { ...p, _pedido: p, saldoPendiente: saldo };
+    let cantidad = Number(p.cantidad || 0);
+    let color = p.colorPrincipal || '-';
+    let cortes = Number(p.cortes || 0);
+    let ranuras = Number(p.ranuras || 0);
+    let perforaciones = Number(p.perforaciones || 0);
+
     if (p.detalles?.length) {
-      row.cantidad = p.detalles.reduce((s, d) => s + Number(d.cantidad || 0), 0);
-      const d0 = p.detalles[0];
-      row.colorPrincipal = d0.material || p.colorPrincipal || '-';
-      if (p.detalles.length > 1) {
-        row.colorSecundario = `+${p.detalles.length - 1} materiales`;
-      }
-      const sumCortes = p.detalles.reduce((s, d) => s + Number(d.cortes || 0), 0);
-      const sumRanuras = p.detalles.reduce((s, d) => s + Number(d.ranuras || 0), 0);
-      const sumPerf = p.detalles.reduce((s, d) => s + Number(d.perforaciones || 0), 0);
-      row.cortes = sumCortes;
-      row.ranuras = sumRanuras;
-      row.perforaciones = sumPerf;
-      row.cantidadEspeciales = p.detalles.reduce(
-        (s, d) =>
-          s +
-          (d.especiales || []).reduce((t, e) => t + Number(e.cantidad || 0), 0),
-        0
-      );
+      cantidad = p.detalles.reduce((s, d) => s + Number(d.cantidad || 0), 0);
+      color = p.detalles[0].material || p.colorPrincipal || '-';
+      cortes = p.detalles.reduce((s, d) => s + Number(d.cortes || 0), 0);
+      ranuras = p.detalles.reduce((s, d) => s + Number(d.ranuras || 0), 0);
+      perforaciones = p.detalles.reduce((s, d) => s + Number(d.perforaciones || 0), 0);
     }
-    return row;
+
+    return {
+      pedidoId: p.id!,
+      numeroOrden: p.numeroOrden,
+      cliente: p.cliente?.nombre ?? '-',
+      cantidad,
+      color,
+      cortes,
+      ranuras,
+      perforaciones,
+      maquina: p.maquina || '-',
+      observaciones: p.observaciones || '-',
+      estado: (p.estado ?? 'CORTE').toUpperCase(),
+      pedidoOriginal: p,
+      id: p.id!,
+      _pedido: p,
+      prioridad: p.prioridad,
+      vendedora: p.vendedora,
+      fechaIngreso: p.fechaIngreso,
+      horaIngreso: p.horaIngreso,
+      fechaEntrega: p.fechaEntrega,
+      horaEntrega: p.horaEntrega,
+      colorPrincipal: color,
+      colorSecundario: p.detalles && p.detalles.length > 1 ? `+${p.detalles.length - 1} materiales` : p.colorSecundario,
+      colorTercero: p.colorTercero,
+      saldoPendiente: saldo,
+      esFilaPedidoCompleto: true
+    };
   }
 
     pedidoVacio(): Pedido {
@@ -1006,8 +1104,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
   }
 
-  abrirModalRegistrarPago(row: any): void {
-    const p = row._pedido || row;
+  abrirModalRegistrarPago(row: PedidoVistaDetalle): void {
+    const p = row.pedidoOriginal;
     this.pedidoPagoSeleccion = p;
     this.guardandoPago = false;
     this.formPago = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
@@ -1075,8 +1173,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  abrirHistorialPagosPedido(row: any): void {
-    const p = row._pedido || row;
+  abrirHistorialPagosPedido(row: PedidoVistaDetalle): void {
+    const p = row.pedidoOriginal;
     if (!p?.id) {
       return;
     }
@@ -1142,12 +1240,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.nuevoPedido = this.pedidoVacio();
     }
 
-    editarPedido(pedido: Pedido) {
+    editarPedido(row: PedidoVistaDetalle | Pedido) {
+      const pedido = 'pedidoOriginal' in row ? row.pedidoOriginal : row;
       this.abrirConfirmacion(
         'Editar pedido',
         `¿Seguro que deseas editar el pedido ${pedido.numeroOrden}?`,
         () => {
-          const original = (pedido as any)._pedido || pedido;
+          const original = pedido;
           this.modoEdicion = true;
           this.mostrarModal = true;
           this.nuevoPedido = JSON.parse(JSON.stringify(original));
@@ -1380,7 +1479,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   recalcularDashboard() {
-    const lineas = this.pedidoARenglones(this.pedidos);
+    const lineas = this.pedidosADetalleVista(this.pedidos);
     this.totalPedidos = this.pedidos.length;
     this.totalCorte = lineas.filter((r) => r.estado === 'CORTE').length;
     this.totalCanteado = lineas.filter((r) => r.estado === 'CANTEADO').length;
@@ -1484,8 +1583,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   }
 
-  eliminarPedido(pedido: any) {
-    pedido = pedido._pedido || pedido;
+  eliminarPedido(row: PedidoVistaDetalle | Pedido) {
+    const pedido = 'pedidoOriginal' in row ? row.pedidoOriginal : row;
     this.abrirConfirmacion(
       'Eliminar pedido',
       `¿Seguro que deseas eliminar el pedido ${pedido.numeroOrden}? Esta acción no se puede deshacer.`,
@@ -1499,20 +1598,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
-  cambiarEstadoDirecto(row: any, nuevoEstado: string): void {
-    const base = row._pedido || row;
-    if (!base?.id) {
+  cambiarEstadoDirecto(row: PedidoVistaDetalle, nuevoEstado: string): void {
+    const pedido = row.pedidoOriginal;
+    if (!pedido?.id) {
       return;
     }
 
     const estadoAnteriorFila = row.estado;
+    const estadoNorm = nuevoEstado.toUpperCase();
 
     const revertir = (): void => {
       row.estado = estadoAnteriorFila;
       this.cdr.markForCheck();
     };
 
-    if (nuevoEstado === 'DESPACHO' && this.obtenerSaldo(base) > 0) {
+    if (estadoNorm === 'DESPACHO' && this.obtenerSaldo(pedido) > 0) {
       this.notify.warning(
         'No puede pasar a DESPACHO con saldo pendiente. Cancele la deuda o registre abonos antes.'
       );
@@ -1520,7 +1620,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (nuevoEstado === 'ENTREGADO' && this.obtenerSaldo(base) > 0) {
+    if (estadoNorm === 'ENTREGADO' && this.obtenerSaldo(pedido) > 0) {
       this.notify.warning(
         'No se puede marcar como ENTREGADO: el pedido tiene saldo pendiente. Regularice el pago primero.'
       );
@@ -1528,21 +1628,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const actualizado: Pedido = JSON.parse(JSON.stringify(base));
+    const usuario = this.usuarioParaAuditoria();
 
-    if (row.detalleId && actualizado.detalles?.length) {
-      const det = actualizado.detalles.find((d) => d.id === row.detalleId);
-      if (det) {
-        det.estado = nuevoEstado;
-      }
-    } else {
-      actualizado.estado = nuevoEstado;
-      actualizado.detalles?.forEach((d) => {
-        d.estado = nuevoEstado;
-      });
+    if (row.detalleId) {
+      this.pedidoService
+        .actualizarEstadoDetalle(pedido.id, row.detalleId, estadoNorm, usuario)
+        .subscribe({
+          next: () => {
+            row.estado = estadoNorm;
+            this.cargarPedidos();
+          },
+          error: (err: unknown) => {
+            console.error(err);
+            this.notify.error(this.mensajeHttp(err, 'No se pudo actualizar el estado del material'));
+            revertir();
+          }
+        });
+      return;
     }
 
-    this.pedidoService.actualizar(base.id, actualizado, this.usuarioParaAuditoria()).subscribe({
+    const actualizado: Pedido = JSON.parse(JSON.stringify(pedido));
+    actualizado.estado = estadoNorm;
+    this.pedidoService.actualizar(pedido.id, actualizado, usuario).subscribe({
       next: () => this.cargarPedidos(),
       error: (err: unknown) => {
         console.error(err);
@@ -1653,7 +1760,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     event.preventDefault();
   }
 
-  verAuditoria(pedido: Pedido) {
+  verAuditoria(row: PedidoVistaDetalle) {
+    const pedido = row.pedidoOriginal;
     if (!pedido.id) return;
 
     this.pedidoAuditoria = pedido;
@@ -1688,14 +1796,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  cambiarVendedora(pedido: any, nueva: string) {
-
-    pedido = pedido._pedido || pedido;
-    pedido.vendedora = nueva;
+  cambiarVendedora(row: PedidoVistaDetalle, nueva: string) {
+    const pedido = row.pedidoOriginal;
+    row.vendedora = nueva;
+    const actualizado = JSON.parse(JSON.stringify(pedido)) as Pedido;
+    actualizado.vendedora = nueva;
 
     this.pedidoService.actualizar(
-      pedido.id,
-      pedido,
+      pedido.id!,
+      actualizado,
       this.usuarioParaAuditoria()
     ).subscribe({
       next: () => {
@@ -1709,9 +1818,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 
-  obtenerSaldo(pedido: any): number {
-    const base = pedido?._pedido || pedido;
-    return Math.max(Number(base.total || 0) - Number(base.adelanto || 0), 0);
+  obtenerSaldo(pedido: Pedido): number {
+    return Math.max(Number(pedido.total || 0) - Number(pedido.adelanto || 0), 0);
   }
 
   estadoPago(pedido: any): string {
