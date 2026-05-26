@@ -26,6 +26,14 @@ export class LoginComponent {
 
   login(): void {
     this.error = '';
+    if (!this.correo.trim() || !this.password) {
+      this.error = 'Ingrese correo y contraseña';
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo.trim())) {
+      this.error = 'Ingrese un correo válido';
+      return;
+    }
     this.cargando = true;
 
     this.auth.login(this.correo.trim(), this.password).subscribe({

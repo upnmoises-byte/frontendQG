@@ -161,6 +161,18 @@
           <strong>{{ totalEntregados }}</strong>
           <span>Finalizados</span>
         </div>
+
+        <div class="stat-card danger-card">
+          <h3>Vencidos</h3>
+          <strong>{{ pedidosVencidos }}</strong>
+          <span>Fecha entrega vencida</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Tiempo promedio</h3>
+          <strong>{{ promedioDiasEntrega }}</strong>
+          <span>Días ingreso a entrega</span>
+        </div>
       </section>
 
         <section class="dashboard-grid">
@@ -439,6 +451,12 @@
         <option value="SECCIONADORA">Seccionadora</option>
       </select>
 
+      <label class="filter-date-label">Ingreso desde</label>
+      <input type="date" [(ngModel)]="filtroFechaIngresoDesde" (ngModelChange)="onFiltrosCambiaron()" name="fiDesdeGeneral" />
+
+      <label class="filter-date-label">Ingreso hasta</label>
+      <input type="date" [(ngModel)]="filtroFechaIngresoHasta" (ngModelChange)="onFiltrosCambiaron()" name="fiHastaGeneral" />
+
       <button (click)="limpiarFiltros()">Limpiar</button>
     </section>
 
@@ -594,6 +612,7 @@
             (drop)="soltarPedido(i)"
             class="draggable-row"
             [class.fila-deuda]="(vistaActual === 'DESPACHO' || vistaActual === 'PAGOS') && (p.saldoPendiente ?? 0) > 0"
+            [class.fila-vencida]="esPedidoVencido(p)"
           >
 
             <!-- PRIORIDAD -->

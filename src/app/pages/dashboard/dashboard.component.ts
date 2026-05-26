@@ -128,11 +128,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   porcentajeEntregados = 0;
   totalVendedoras = 0;
   totalEspeciales = 0;
+  pedidosVencidos = 0;
+  promedioDiasEntrega = 0;
 
   filtroCliente = '';
   filtroVendedora = '';
   filtroEstado = '';
   filtroMaquina = '';
+  filtroFechaIngresoDesde = '';
+  filtroFechaIngresoHasta = '';
 
   /** Filtros extra solo en vista Pagos */
   filtroPagoSaldo = '';
@@ -560,6 +564,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (!(coincideCliente && coincideVendedora && coincideEstado && coincideMaquina)) {
         return false;
       }
+      if (!this.fechaEnRango(p.fechaIngreso as string, this.filtroFechaIngresoDesde, this.filtroFechaIngresoHasta)) {
+        return false;
+      }
       if (this.vistaActual === 'PAGOS') {
         return this.coincideFiltrosPagos(p);
       }
@@ -914,6 +921,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.filtroVendedora = '';
     this.filtroEstado = '';
     this.filtroMaquina = '';
+    this.filtroFechaIngresoDesde = '';
+    this.filtroFechaIngresoHasta = '';
 
     if (nav === 'ROLES_PERMISOS') {
       this.rolesMatrix = { ...this.perms.getFullMatrix() };
@@ -1102,6 +1111,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.notify.warning('Complete nombre, correo y rol.');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.usuarioForm.correo.trim())) {
+      this.notify.warning('Ingrese un correo válido.');
+      return;
+    }
+    if (this.usuarioForm.password?.trim() && this.usuarioForm.password.trim().length < 6) {
+      this.notify.warning('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
     if (this.modoEdicionUsuario && this.usuarioForm.id != null) {
       this.admin
         .actualizarUsuario(this.usuarioForm.id, {
@@ -1267,6 +1284,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.filtroVendedora = '';
     this.filtroEstado = '';
     this.filtroMaquina = '';
+    this.filtroFechaIngresoDesde = '';
+    this.filtroFechaIngresoHasta = '';
     this.filtroPagoSaldo = '';
     this.filtroPagoFechaIngresoDesde = '';
     this.filtroPagoFechaIngresoHasta = '';
@@ -1504,6 +1523,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const totalPedido = Number(this.nuevoPedido.total || 0);
+    const adelantoPedido = Number(this.nuevoPedido.adelanto || 0);
+    if (totalPedido < 0 || adelantoPedido < 0) {
+      this.notify.warning('Total y adelanto no pueden ser negativos');
+      return;
+    }
+    if (adelantoPedido > totalPedido) {
+      this.notify.warning('El adelanto no puede ser mayor al total del pedido');
+      return;
+    }
+
     for (const d of this.nuevoPedido.detalles) {
       if (!d.material?.trim()) {
         this.notify.warning('Cada material debe tener nombre/color');
@@ -1581,6 +1611,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.totalDespacho = lineas.filter((r) => r.estado === 'DESPACHO').length;
     this.totalEntregados = lineas.filter((r) => r.estado === 'ENTREGADO').length;
     this.totalEspeciales = lineas.filter((r) => r.estado === 'ESPECIALES').length;
+    this.pedidosVencidos = lineas.filter((r) => this.esPedidoVencido(r)).length;
+    this.promedioDiasEntrega = this.calcularPromedioDiasEntrega();
 
     const detallesCorte = lineas.filter((r) => r.estado === 'CORTE');
     this.totalEscuadradora = detallesCorte.filter((p) => p.maquina?.toUpperCase() === 'ESCUADRADORA').length;
@@ -1612,6 +1644,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.porcentajeDespacho = this.totalPedidos ? Math.round((this.totalDespacho / this.totalPedidos) * 100) : 0;
     this.porcentajeEntregados = this.totalPedidos ? Math.round((this.totalEntregados / this.totalPedidos) * 100) : 0;
     this.totalVendedoras = this.pedidos.length || 1;
+  }
+
+  esPedidoVencido(row: PedidoVistaDetalle): boolean {
+    if (!row.fechaEntrega || row.estado === 'ENTREGADO') {
+      return false;
+    }
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const entrega = new Date(`${row.fechaEntrega}T00:00:00`);
+    return Number.isFinite(entrega.getTime()) && entrega < hoy;
+  }
+
+  private calcularPromedioDiasEntrega(): number {
+    const duraciones = this.pedidos
+      .filter((p) => p.fechaIngreso && p.fechaEntrega)
+      .map((p) => {
+        const ingreso = new Date(`${p.fechaIngreso}T00:00:00`).getTime();
+        const entrega = new Date(`${p.fechaEntrega}T00:00:00`).getTime();
+        return Number.isFinite(ingreso) && Number.isFinite(entrega)
+          ? Math.max(Math.round((entrega - ingreso) / 86400000), 0)
+          : null;
+      })
+      .filter((n): n is number => n !== null);
+    return duraciones.length
+      ? Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length)
+      : 0;
   }
 
   soloNumerosClienteDocumento() {

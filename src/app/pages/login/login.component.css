@@ -51,7 +51,12 @@ background-image:
 }
 
 .left-content li::before {
-  content: "✓";
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ffcc00;
   color: #ffcc00;
   font-weight: bold;
   margin-right: 10px;
