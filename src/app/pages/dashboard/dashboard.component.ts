@@ -118,9 +118,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   pedidosAnabel = 0;
   pedidosIsamar = 0;
   pedidosMelissa = 0;
-  pedidosRocio = 0;
-  pedidosKarina = 0;
-  pedidosLucia = 0;
   totalPedidosProduccion = 0;
   porcentajeCorte = 0;
   porcentajeCanteado = 0;
@@ -184,6 +181,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   pedidoPagoSeleccion: Pedido | null = null;
   historialPagos: any[] = [];
   formPago: RegistrarPagoPayload = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
+  codigoPagoError = '';
   guardandoPago = false;
 
   mostrarModalUsuario = false;
@@ -246,10 +244,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { value: 'DIANA', label: 'DIANA' },
       { value: 'ANABEL', label: 'ANABEL' },
       { value: 'ISAMAR', label: 'ISAMAR' },
-      { value: 'MELISSA', label: 'MELISSA' },
-      { value: 'ROCIO', label: 'ROCIO' },
-      { value: 'KARINA', label: 'KARINA' },
-      { value: 'LUCIA', label: 'LUCIA' }
+      { value: 'MELISSA', label: 'MELISSA' }
     ];
     const fija = this.vendedoraAsignadaPorRol();
     if (fija) {
@@ -1164,6 +1159,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const p = row.pedidoOriginal;
     this.pedidoPagoSeleccion = p;
     this.guardandoPago = false;
+    this.codigoPagoError = '';
     this.formPago = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
     this.mostrarModalPago = true;
     this.cdr.markForCheck();
@@ -1173,6 +1169,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.mostrarModalPago = false;
     this.guardandoPago = false;
     this.pedidoPagoSeleccion = null;
+    this.codigoPagoError = '';
   }
 
   metodoPagoRequiereCodigo(): boolean {
@@ -1183,6 +1180,66 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!this.metodoPagoRequiereCodigo()) {
       this.formPago.codigoPago = '';
     }
+    this.validarCodigoPago();
+    this.cdr.markForCheck();
+  }
+
+  onCodigoPagoChange(valor: unknown): void {
+    const digitos = String(valor || '').replace(/\D/g, '');
+    this.formPago.codigoPago = digitos.slice(0, 12);
+    this.validarCodigoPago();
+    if (digitos.length > 12) {
+      this.codigoPagoError = 'El código de operación debe tener máximo 12 dígitos.';
+    }
+  }
+
+  validarCodigoPago(): void {
+    const codigo = String(this.formPago.codigoPago || '');
+    this.codigoPagoError = '';
+    if (!this.metodoPagoRequiereCodigo()) {
+      return;
+    }
+    if (!codigo) {
+      this.codigoPagoError = 'Ingrese el código de operación.';
+      return;
+    }
+    if (codigo.length > 12) {
+      this.codigoPagoError = 'El código de operación debe tener máximo 12 dígitos.';
+    }
+  }
+
+  totalPedidoPagoSeleccion(): number {
+    return Number(this.pedidoPagoSeleccion?.total || 0);
+  }
+
+  totalPagadoPagoSeleccion(): number {
+    return this.pedidoPagoSeleccion ? this.totalPagadoPedido(this.pedidoPagoSeleccion) : 0;
+  }
+
+  saldoPagoSeleccion(): number {
+    return Math.max(this.totalPedidoPagoSeleccion() - this.totalPagadoPagoSeleccion(), 0);
+  }
+
+  pedidoPagoCancelado(): boolean {
+    return (this.pedidoPagoSeleccion?.estado || '').toUpperCase() === 'CANCELADO' || this.saldoPagoSeleccion() <= 0;
+  }
+
+  montoPagoInvalido(): boolean {
+    const monto = Number(this.formPago.monto || 0);
+    return monto <= 0 || monto > this.saldoPagoSeleccion();
+  }
+
+  puedeGuardarPago(): boolean {
+    const codigoPendiente = this.metodoPagoRequiereCodigo() && !String(this.formPago.codigoPago || '').trim();
+    return !this.guardandoPago &&
+      !this.pedidoPagoCancelado() &&
+      !this.montoPagoInvalido() &&
+      !codigoPendiente &&
+      !this.codigoPagoError;
+  }
+
+  pagarSaldoCompleto(): void {
+    this.formPago.monto = Number(this.saldoPagoSeleccion().toFixed(2));
     this.cdr.markForCheck();
   }
 
@@ -1196,13 +1253,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     const m = Number(this.formPago.monto);
     if (!m || m <= 0) {
-      this.notify.warning('Indique un monto mayor a 0');
+      this.notify.warning('El monto debe ser mayor a cero.');
+      return;
+    }
+    if (this.pedidoPagoCancelado()) {
+      this.notify.warning('Este pedido ya está cancelado. No se pueden registrar más pagos.');
+      return;
+    }
+    if (m > this.saldoPagoSeleccion()) {
+      this.notify.warning('El monto no puede superar el saldo pendiente.');
       return;
     }
     const metodo = (this.formPago.metodoPago || '').trim();
     const codigo = (this.formPago.codigoPago || '').trim();
-    if (this.metodoPagoRequiereCodigo() && !codigo) {
-      this.notify.warning('Indique el código de operación (voucher, Yape, transferencia, etc.)');
+    this.validarCodigoPago();
+    if (this.metodoPagoRequiereCodigo() && this.codigoPagoError) {
+      this.notify.warning(this.codigoPagoError);
       return;
     }
     const body: RegistrarPagoPayload = {
@@ -1296,11 +1362,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.modoEdicion = false;
       this.mostrarModal = true;
       this.nuevoPedido = this.pedidoVacio();
-    const vendedora = this.vendedoraAsignadaPorRol();
-    if (vendedora) {
-      this.nuevoPedido.vendedora = vendedora;
+      const vendedora = this.vendedoraAsignadaPorRol();
+      if (vendedora) {
+        this.nuevoPedido.vendedora = vendedora;
+      }
+      this.cargarSiguienteNumeroOrden();
     }
-    }
+
+  private cargarSiguienteNumeroOrden(): void {
+    this.pedidoService.siguienteNumeroOrden('27000').subscribe({
+      next: (res) => {
+        if (!this.modoEdicion) {
+          this.nuevoPedido.numeroOrden = res.numeroOrden;
+          this.cdr.markForCheck();
+        }
+      },
+      error: (err) => {
+        console.error(err);
+        this.notify.error(this.mensajeHttp(err, 'No se pudo generar el número de orden'));
+      }
+    });
+  }
 
     editarPedido(row: PedidoVistaDetalle | Pedido) {
       const pedido = 'pedidoOriginal' in row ? row.pedidoOriginal : row;
@@ -1375,7 +1457,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       String(c.documento || '').trim() === String(this.nuevoCliente.numeroDocumento || '').trim()
     );
     if (duplicadoDocumento) {
-      this.notify.warning('Ya existe un cliente registrado con este documento.');
+      this.notify.warning('No se puede registrar. Ya existe un cliente con este DNI/RUC.');
       return;
     }
 
@@ -1386,7 +1468,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       String(c.documento || '').trim() !== String(this.nuevoCliente.numeroDocumento || '').trim()
     );
     if (duplicadoNombre) {
-      this.notify.warning('Ya existe un cliente registrado con este nombre o razón social.');
+      this.notify.warning('Ya existe un cliente con este nombre o razón social.');
       return;
     }
 
@@ -1437,6 +1519,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return String(valor || '')
       .replace(/\D/g, '')
       .slice(0, max);
+  }
+
+  normalizarMayusculas(valor: unknown): string {
+    return String(valor || '').toUpperCase();
+  }
+
+  onMaterialChange(detalle: any, valor: unknown): void {
+    detalle.material = this.normalizarMayusculas(valor);
+  }
+
+  onEspecialDescripcionChange(especial: any, valor: unknown): void {
+    especial.descripcion = this.normalizarMayusculas(valor);
   }
 
   onTipoDocumentoClienteChange(): void {
@@ -1521,6 +1615,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!this.nuevoPedido.detalles || this.nuevoPedido.detalles.length === 0) {
       this.notify.warning('Agrega al menos un material al pedido');
       return;
+    }
+    this.nuevoPedido.detalles.forEach((d) => this.normalizarDetalle(d));
+    if (this.nuevoPedido.colorPrincipal) {
+      this.nuevoPedido.colorPrincipal = this.normalizarMayusculas(this.nuevoPedido.colorPrincipal);
+    }
+    if (this.nuevoPedido.colorSecundario) {
+      this.nuevoPedido.colorSecundario = this.normalizarMayusculas(this.nuevoPedido.colorSecundario);
+    }
+    if (this.nuevoPedido.colorTercero) {
+      this.nuevoPedido.colorTercero = this.normalizarMayusculas(this.nuevoPedido.colorTercero);
     }
 
     const totalPedido = Number(this.nuevoPedido.total || 0);
@@ -1631,12 +1735,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pedidosDiana = this.pedidos.filter((p) => p.vendedora === 'DIANA' && p.estado !== 'ENTREGADO').length;
     this.pedidosAnabel = this.pedidos.filter((p) => p.vendedora === 'ANABEL' && p.estado !== 'ENTREGADO').length;
     this.pedidosIsamar = this.pedidos.filter((p) => p.vendedora === 'ISAMAR' && p.estado !== 'ENTREGADO').length;
-    this.pedidosMelissa = this.pedidos.filter(
-      (p) => (p.vendedora === 'MELISSA' || p.vendedora === 'YSAMARA') && p.estado !== 'ENTREGADO'
-    ).length;
-    this.pedidosRocio = this.pedidos.filter((p) => p.vendedora === 'ROCIO' && p.estado !== 'ENTREGADO').length;
-    this.pedidosKarina = this.pedidos.filter((p) => p.vendedora === 'KARINA' && p.estado !== 'ENTREGADO').length;
-    this.pedidosLucia = this.pedidos.filter((p) => p.vendedora === 'LUCIA' && p.estado !== 'ENTREGADO').length;
+    this.pedidosMelissa = this.pedidos.filter((p) => p.vendedora === 'MELISSA' && p.estado !== 'ENTREGADO').length;
 
     this.totalPedidosProduccion = this.pedidos.filter((p) => p.estado !== 'ENTREGADO').length;
     this.porcentajeCorte = this.totalPedidos ? Math.round((this.totalCorte / this.totalPedidos) * 100) : 0;
@@ -1712,6 +1811,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   normalizarDetalle(d: any) {
 
+    d.material = this.normalizarMayusculas(d.material);
+
     d.cantidad = this.normalizarEntero(d.cantidad, 1);
 
     d.cortes = this.normalizarEntero(d.cortes, 0);
@@ -1733,6 +1834,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   normalizarEspecial(e: any) {
 
     e.cantidad = this.normalizarEntero(e.cantidad, 1);
+    e.descripcion = this.normalizarMayusculas(e.descripcion);
 
   }
 
@@ -1765,17 +1867,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     };
 
-    if (estadoNorm === 'DESPACHO' && this.obtenerSaldo(pedido) > 0) {
-      this.notify.warning(
-        'No puede pasar a DESPACHO con saldo pendiente. Cancele la deuda o registre abonos antes.'
-      );
-      revertir();
-      return;
-    }
-
     if (estadoNorm === 'ENTREGADO' && this.obtenerSaldo(pedido) > 0) {
       this.notify.warning(
-        'No se puede marcar como ENTREGADO: el pedido tiene saldo pendiente. Regularice el pago primero.'
+        'No puede pasar a ENTREGADO con saldo pendiente. Cancele la deuda o registre abonos antes.'
       );
       revertir();
       return;

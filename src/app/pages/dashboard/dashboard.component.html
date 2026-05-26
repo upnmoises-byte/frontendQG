@@ -286,24 +286,6 @@
                 <strong>{{ pedidosMelissa }}</strong>
               </div>
 
-              <div class="legend-item">
-                <span class="legend-color rocio"></span>
-                Rocío
-                <strong>{{ pedidosRocio }}</strong>
-              </div>
-
-              <div class="legend-item">
-                <span class="legend-color karina"></span>
-                Karina
-                <strong>{{ pedidosKarina }}</strong>
-              </div>
-
-              <div class="legend-item">
-                <span class="legend-color lucia"></span>
-                Lucía
-                <strong>{{ pedidosLucia }}</strong>
-              </div>
-
             </div>
 
           </div>
@@ -315,8 +297,11 @@
 
     <!-- CONFIGURACIÓN -->
     <section class="table-card config-card" *ngIf="vistaActual === 'CONFIGURACION'">
-      <div class="card-header">
-        <h2>Configuración</h2>
+      <div class="card-header config-header">
+        <div>
+          <h2>Configuración</h2>
+          <p>Parámetros generales de empresa, moneda y preferencias del sistema.</p>
+        </div>
         <button type="button" class="btn-primary" *ngIf="auth.hasRole('ADMIN')" (click)="guardarConfiguracion()">Guardar cambios</button>
       </div>
 
@@ -345,81 +330,96 @@
     <!-- ROLES Y PERMISOS -->
     <section class="table-card roles-permisos-card" *ngIf="vistaActual === 'ROLES_PERMISOS'">
       <ng-container *ngIf="auth.hasRole('ADMIN'); else sinPermisoRolesTpl">
-        <div class="card-header">
-          <h2>Administración de accesos</h2>
-          <span>La matriz de menú se guarda en este navegador (localStorage). Usuarios y roles viven en el servidor.</span>
+        <div class="card-header roles-header">
+          <div>
+            <h2>Administración de accesos</h2>
+            <p>Usuarios, roles disponibles y permisos visibles por cada perfil.</p>
+          </div>
+          <span>La matriz de menú se guarda en este navegador.</span>
         </div>
 
-        <h3 class="subsection-title">Usuarios</h3>
-        <div class="admin-toolbar">
-          <button type="button" class="btn-primary" (click)="abrirModalUsuarioNuevo()">+ Nuevo usuario</button>
-        </div>
-        <div class="table-wrapper admin-users-wrap">
-          <table class="admin-users-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Rol</th>
-                <th>Activo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let u of usuariosAdmin; trackBy: trackByUsuarioAdminId">
-                <td>{{ u.nombre }}</td>
-                <td>{{ u.correo }}</td>
-                <td>{{ u.rol }}</td>
-                <td>{{ u.activo ? 'Sí' : 'No' }}</td>
-                <td><button type="button" class="edit-btn" (click)="abrirModalUsuarioEditar(u)">Editar</button></td>
-              </tr>
-              <tr *ngIf="usuariosAdmin.length === 0">
-                <td colspan="5" class="empty">No hay usuarios o aún se están cargando.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3 class="subsection-title">Roles en el sistema</h3>
-        <p class="config-hint">Los usuarios solo pueden asignarse roles que existan aquí. Eliminar un rol solo es posible si ningún usuario lo usa.</p>
-        <div class="admin-toolbar rol-catalog-toolbar">
-          <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="Nuevo rol (ej. LOGISTICA)" name="nuevoRolNombre" />
-          <button type="button" class="btn-primary" (click)="crearRolEnCatalogo()">Agregar rol</button>
-        </div>
-        <div class="rol-chips">
-          <span class="rol-chip" *ngFor="let r of rolesMatrixRoles; trackBy: trackByString">
-            {{ r }}
-            <button type="button" class="chip-remove" *ngIf="!rolesNoEliminarEnCatalogo.has(r)" (click)="eliminarRolCatalogo(r)" title="Eliminar del catálogo">×</button>
-          </span>
+        <div class="roles-section">
+          <div class="section-title-row">
+            <h3 class="subsection-title">Usuarios</h3>
+            <button type="button" class="btn-primary" (click)="abrirModalUsuarioNuevo()">+ Nuevo usuario</button>
+          </div>
+          <div class="table-wrapper admin-users-wrap">
+            <table class="admin-users-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Correo</th>
+                  <th>Rol</th>
+                  <th>Activo</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of usuariosAdmin; trackBy: trackByUsuarioAdminId">
+                  <td>{{ u.nombre }}</td>
+                  <td>{{ u.correo }}</td>
+                  <td><span class="rol-chip compact">{{ u.rol }}</span></td>
+                  <td><span class="status-pill" [class.inactive]="!u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span></td>
+                  <td><button type="button" class="edit-btn" (click)="abrirModalUsuarioEditar(u)">Editar</button></td>
+                </tr>
+                <tr *ngIf="usuariosAdmin.length === 0">
+                  <td colspan="5" class="empty">No hay usuarios o aún se están cargando.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <h3 class="subsection-title">Matriz de vistas por rol</h3>
-        <div class="table-wrapper roles-matrix-wrap">
-          <table class="roles-matrix">
-            <thead>
-              <tr>
-                <th class="sticky-col">Rol</th>
-                <th *ngFor="let nav of navIdsLista; trackBy: trackByNavId">{{ navEtiqueta(nav) }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let rol of rolesMatrixRoles; trackBy: trackByString">
-                <td class="sticky-col rol-name-cell">{{ rolEtiqueta(rol) }}</td>
-                <td *ngFor="let nav of navIdsLista; trackBy: trackByNavId" class="check-cell">
-                  <input
-                    type="checkbox"
-                    [checked]="permisoNavActivo(rol, nav)"
-                    (change)="togglePermisoNav(rol, nav, $any($event.target).checked)"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="roles-section">
+          <div class="section-title-row">
+            <div>
+              <h3 class="subsection-title">Roles en el sistema</h3>
+              <p class="config-hint">Los usuarios solo pueden asignarse roles que existan aquí.</p>
+            </div>
+            <div class="admin-toolbar rol-catalog-toolbar">
+              <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="Nuevo rol (ej. LOGISTICA)" name="nuevoRolNombre" />
+              <button type="button" class="btn-primary" (click)="crearRolEnCatalogo()">Agregar rol</button>
+            </div>
+          </div>
+          <div class="rol-chips">
+            <span class="rol-chip" *ngFor="let r of rolesMatrixRoles; trackBy: trackByString">
+              {{ r }}
+              <button type="button" class="chip-remove" *ngIf="!rolesNoEliminarEnCatalogo.has(r)" (click)="eliminarRolCatalogo(r)" title="Eliminar del catálogo">×</button>
+            </span>
+          </div>
         </div>
 
-        <div class="roles-actions">
-          <button type="button" class="btn-primary" (click)="guardarMatrizPermisos()">Guardar permisos del menú</button>
-          <button type="button" class="cancel-btn" (click)="restaurarMatrizPorDefecto()">Restaurar por defecto</button>
+        <div class="roles-section">
+          <div class="section-title-row">
+            <h3 class="subsection-title">Matriz de vistas por rol</h3>
+          </div>
+          <div class="table-wrapper roles-matrix-wrap">
+            <table class="roles-matrix">
+              <thead>
+                <tr>
+                  <th class="sticky-col">Rol</th>
+                  <th *ngFor="let nav of navIdsLista; trackBy: trackByNavId">{{ navEtiqueta(nav) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let rol of rolesMatrixRoles; trackBy: trackByString">
+                  <td class="sticky-col rol-name-cell">{{ rolEtiqueta(rol) }}</td>
+                  <td *ngFor="let nav of navIdsLista; trackBy: trackByNavId" class="check-cell">
+                    <input
+                      type="checkbox"
+                      [checked]="permisoNavActivo(rol, nav)"
+                      (change)="togglePermisoNav(rol, nav, $any($event.target).checked)"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="roles-actions">
+            <button type="button" class="btn-primary" (click)="guardarMatrizPermisos()">Guardar permisos del menú</button>
+            <button type="button" class="cancel-btn" (click)="restaurarMatrizPorDefecto()">Restaurar por defecto</button>
+          </div>
         </div>
       </ng-container>
       <ng-template #sinPermisoRolesTpl>
@@ -768,6 +768,7 @@
               <div class="pago-resumen" *ngIf="vistaActual === 'PAGOS'; else pagoEstadoSimpleTpl">
                 <div><span>Total</span><strong>S/ {{ (p.totalPedido || 0) | number:'1.2-2' }}</strong></div>
                 <div><span>Pagado</span><strong>S/ {{ (p.totalPagado || 0) | number:'1.2-2' }}</strong></div>
+                <div><span>Saldo</span><strong>S/ {{ (p.saldoPendiente || 0) | number:'1.2-2' }}</strong></div>
                 <span
                   *ngIf="(p.saldoPendiente ?? 0) > 0"
                   class="deuda-badge"
@@ -801,7 +802,14 @@
 
               <div class="pagos-actions" *ngIf="vistaActual === 'PAGOS' && auth.canRegistrarPago()">
                 <button type="button" class="history-btn" (click)="abrirHistorialPagosPedido(p)">Historial pagos</button>
-                <button type="button" class="edit-btn" (click)="abrirModalRegistrarPago(p)">Registrar abono</button>
+                <button
+                  type="button"
+                  class="edit-btn"
+                  *ngIf="(p.saldoPendiente ?? 0) > 0"
+                  (click)="abrirModalRegistrarPago(p)"
+                >
+                  Registrar abono
+                </button>
               </div>
 
             </td>
@@ -876,13 +884,12 @@
       </div>
 
       <div class="table-wrapper">
-      <table>
+      <table class="clientes-table">
 
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Nombre</th>
             <th>DNI / RUC</th>
+            <th>Nombre / Razón social</th>
             <th>Teléfono</th>
             <th>Correo</th>
             <th>Dirección</th>
@@ -894,9 +901,8 @@
 
           <tr *ngFor="let c of clientesFiltrados; trackBy: trackByClienteId">
 
-            <td>{{ c.id }}</td>
-            <td>{{ c.nombre }}</td>
             <td>{{ c.documento }}</td>
+            <td>{{ c.nombre }}</td>
             <td>{{ c.telefono || '-' }}</td>
             <td>{{ c.correo || '-' }}</td>
             <td>{{ c.direccion || '-' }}</td>
@@ -949,7 +955,13 @@
         <div class="form-row">
           <div class="field">
             <label>N° Orden <span>*</span></label>
-            <input type="text" [(ngModel)]="nuevoPedido.numeroOrden" name="numeroOrden" required>
+            <input
+              type="text"
+              [(ngModel)]="nuevoPedido.numeroOrden"
+              name="numeroOrden"
+              required
+              [readonly]="!modoEdicion && !auth.hasRole('ADMIN')"
+            >
           </div>
 
           <div class="field">
@@ -1025,7 +1037,12 @@
 
             <div class="field">
               <label>Material / Color</label>
-              <input type="text" [(ngModel)]="d.material" name="materialDetalle{{ i }}">
+              <input
+                type="text"
+                [ngModel]="d.material"
+                (ngModelChange)="onMaterialChange(d, $event)"
+                name="materialDetalle{{ i }}"
+              >
             </div>
 
             <div class="field">
@@ -1089,7 +1106,13 @@
 
             <div class="especial-row" *ngFor="let e of d.especiales; let j = index; trackBy: trackByIndex">
               <input type="number" min="1" step="1" placeholder="Cantidad" [(ngModel)]="e.cantidad" name="especialCantidad{{ i }}_{{ j }}" (input)="normalizarEspecial(e)">
-              <input type="text" placeholder="Descripción del especial" [(ngModel)]="e.descripcion" name="especialDescripcion{{ i }}_{{ j }}">
+              <input
+                type="text"
+                placeholder="Descripción del especial"
+                [ngModel]="e.descripcion"
+                (ngModelChange)="onEspecialDescripcionChange(e, $event)"
+                name="especialDescripcion{{ i }}_{{ j }}"
+              >
               <button type="button" class="delete-btn" (click)="eliminarEspecial(d, j)">Eliminar</button>
             </div>
           </div>
@@ -1168,11 +1191,37 @@
       </div>
       <button type="button" class="close-btn" (click)="cerrarModalPago()">Cerrar</button>
     </div>
+    <div class="pago-modal-summary" *ngIf="pedidoPagoSeleccion">
+      <div><span>Total del pedido</span><strong>S/ {{ totalPedidoPagoSeleccion() | number:'1.2-2' }}</strong></div>
+      <div><span>Total pagado</span><strong>S/ {{ totalPagadoPagoSeleccion() | number:'1.2-2' }}</strong></div>
+      <div><span>Saldo pendiente</span><strong>S/ {{ saldoPagoSeleccion() | number:'1.2-2' }}</strong></div>
+    </div>
+
+    <div class="pago-cancelado-msg" *ngIf="pedidoPagoCancelado(); else formularioPagoTpl">
+      Pedido cancelado. No admite nuevos abonos.
+    </div>
+
+    <ng-template #formularioPagoTpl>
     <form class="premium-form" (ngSubmit)="guardarRegistroPago()">
-      <div class="form-section">
+      <div class="form-section pago-form-section">
         <div class="field">
           <label>Monto ({{ configMapa['moneda.simbolo'] || 'S/' }})</label>
-          <input type="number" name="montoPago" [(ngModel)]="formPago.monto" min="0.01" step="0.01" required />
+          <div class="pago-monto-row">
+            <input
+              type="number"
+              name="montoPago"
+              [(ngModel)]="formPago.monto"
+              min="0.01"
+              [max]="saldoPagoSeleccion()"
+              step="0.01"
+              required
+              [class.input-invalid]="montoPagoInvalido()"
+            />
+            <button type="button" class="quick-pay-btn" (click)="pagarSaldoCompleto()">Pagar saldo completo</button>
+          </div>
+          <small class="field-error" *ngIf="montoPagoInvalido() && formPago.monto">
+            {{ formPago.monto <= 0 ? 'El monto debe ser mayor a cero.' : 'El monto no puede superar el saldo pendiente.' }}
+          </small>
         </div>
         <div class="field">
           <label>Método de pago</label>
@@ -1189,12 +1238,17 @@
           <input
             type="text"
             name="codigoPago"
-            [(ngModel)]="formPago.codigoPago"
+            [ngModel]="formPago.codigoPago"
+            (ngModelChange)="onCodigoPagoChange($event)"
             required
-            maxlength="64"
-            placeholder="Nº operación, voucher Yape, etc."
+            maxlength="12"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            [class.input-invalid]="codigoPagoError"
+            placeholder="Máximo 12 dígitos"
             autocomplete="off"
           />
+          <small class="field-error" *ngIf="codigoPagoError">{{ codigoPagoError }}</small>
         </div>
         <div class="field full">
           <label>Nota (opcional)</label>
@@ -1203,11 +1257,12 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="cancel-btn" (click)="cerrarModalPago()" [disabled]="guardandoPago">Cancelar</button>
-        <button type="submit" class="save-btn" [disabled]="guardandoPago">
+        <button type="submit" class="save-btn" [disabled]="!puedeGuardarPago()">
           {{ guardandoPago ? 'Guardando…' : 'Guardar pago' }}
         </button>
       </div>
     </form>
+    </ng-template>
   </div>
 </div>
 
@@ -1221,15 +1276,17 @@
       </div>
       <button type="button" class="close-btn" (click)="cerrarHistorialPagos()">Cerrar</button>
     </div>
-    <div class="audit-list" *ngIf="historialPagos.length > 0">
-      <div class="audit-item" *ngFor="let h of historialPagos; trackBy: trackByPagoHistorial">
-        <div class="audit-icon">Pago</div>
-        <div>
-          <strong>{{ h.metodoPago }} — {{ h.monto | number:'1.2-2' }}</strong>
-          <p *ngIf="h.codigoPago" class="audit-codigo">Cód. operación: {{ h.codigoPago }}</p>
-          <p>{{ h.fechaRegistro }} {{ h.horaRegistro }}</p>
-          <span>{{ h.usuarioNombre }} | {{ h.usuarioCorreo }} | {{ h.usuarioRol }}</span>
-          <p *ngIf="h.nota" class="audit-nota">{{ h.nota }}</p>
+    <div class="payment-history-list" *ngIf="historialPagos.length > 0">
+      <div class="payment-history-card" *ngFor="let h of historialPagos; trackBy: trackByPagoHistorial">
+        <div class="payment-history-main">
+          <div>
+            <span class="payment-history-date">{{ h.fechaRegistro }} · {{ h.horaRegistro }}</span>
+            <strong>{{ h.metodoPago }}</strong>
+            <p *ngIf="h.codigoPago" class="audit-codigo">Código de operación: {{ h.codigoPago }}</p>
+            <p class="payment-history-user">{{ h.usuarioNombre }} | {{ h.usuarioCorreo }} | {{ h.usuarioRol }}</p>
+            <p *ngIf="h.nota" class="audit-nota">Nota: {{ h.nota }}</p>
+          </div>
+          <strong class="payment-history-amount">S/ {{ h.monto | number:'1.2-2' }}</strong>
         </div>
       </div>
     </div>

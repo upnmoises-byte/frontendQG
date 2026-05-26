@@ -1022,7 +1022,7 @@ td:last-child {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
 }
 
 .table-card table {
@@ -1572,18 +1572,6 @@ body {
   background: #a855f7;
 }
 
-.legend-color.rocio {
-  background: #ec4899;
-}
-
-.legend-color.karina {
-  background: #6366f1;
-}
-
-.legend-color.lucia {
-  background: #14b8a6;
-}
-
 .cliente-select {
   display: grid;
   grid-template-columns: 1fr 160px;
@@ -1763,15 +1751,14 @@ body {
 }
 
 .table-card {
-  height: calc(100vh - 170px);
-  display: flex;
-  flex-direction: column;
+  height: auto;
+  display: block;
 }
 
 .table-wrapper {
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: auto;
-  flex: 1;
+  flex: initial;
   padding-right: 6px;
 }
 
@@ -1791,15 +1778,14 @@ body {
 }
 /* ===== AJUSTES ERP: SCROLL, PAGOS Y TABLAS ===== */
 .table-card {
-  height: calc(100vh - 190px);
-  display: flex;
-  flex-direction: column;
+  height: auto;
+  display: block;
 }
 
 .table-wrapper {
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: auto;
-  flex: 1;
+  flex: initial;
   padding-right: 8px;
 }
 
@@ -2413,7 +2399,7 @@ table.roles-matrix {
 
 .reportes-panel {
   height: auto;
-  min-height: calc(100vh - 250px);
+  min-height: 0;
   background: #ffffff;
 }
 
@@ -2554,4 +2540,429 @@ table.roles-matrix {
 .estado-select:focus,
 .vendedora-select:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.pago-modal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pago-modal-summary > div {
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.pago-modal-summary span,
+.payment-history-date,
+.payment-history-user {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pago-modal-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: #020617;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pago-cancelado-msg {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  border-radius: 16px;
+  padding: 18px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pago-form-section {
+  background: #ffffff;
+  border-color: #dbe4ef;
+}
+
+.pago-monto-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.quick-pay-btn {
+  border: 1px solid #facc15;
+  background: #fef3c7;
+  color: #78350f;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.quick-pay-btn:hover {
+  background: #fde68a;
+}
+
+.payment-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-history-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #facc15;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.payment-history-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.payment-history-main strong {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+}
+
+.payment-history-amount {
+  min-width: 120px;
+  text-align: right;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-history-card p {
+  margin: 5px 0 0;
+  color: #475569;
+}
+
+.clientes-table {
+  min-width: 980px !important;
+  width: 100% !important;
+}
+
+@media (max-width: 800px) {
+  .pago-modal-summary,
+  .pago-monto-row {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-history-main {
+    flex-direction: column;
+  }
+
+  .payment-history-amount {
+    text-align: left;
+  }
+}
+
+/* ===== CORRECCION FINAL DE LAYOUT Y SCROLL ===== */
+.dashboard {
+  align-items: flex-start;
+  min-height: 100vh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.main-content {
+  min-height: 100vh;
+  height: auto;
+  min-width: 0;
+  overflow: visible;
+  padding-bottom: 56px;
+}
+
+.table-card,
+.config-card,
+.roles-permisos-card,
+.reportes-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+.table-wrapper,
+.admin-users-wrap,
+.roles-matrix-wrap {
+  flex: initial !important;
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding-right: 0;
+}
+
+.table-card table {
+  width: max-content;
+}
+
+.clientes-table,
+.admin-users-table,
+.roles-matrix {
+  width: 100% !important;
+}
+
+.roles-matrix thead th,
+.admin-users-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.roles-matrix .sticky-col {
+  z-index: 7;
+}
+
+/* ===== CONFIGURACION ===== */
+.config-card {
+  max-width: 1180px;
+}
+
+.config-header,
+.roles-header {
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.config-header h2,
+.roles-header h2 {
+  margin-bottom: 4px;
+}
+
+.config-header p,
+.roles-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.config-grid {
+  padding: 0 !important;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.config-grid .field {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.config-grid .field label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: #334155;
+  font-weight: 800;
+}
+
+.config-grid .field input {
+  height: 40px;
+  background: #ffffff;
+}
+
+.config-readonly {
+  padding: 0 !important;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px !important;
+}
+
+/* ===== ROLES Y PERMISOS ===== */
+.roles-permisos-card {
+  display: grid !important;
+  gap: 16px;
+}
+
+.roles-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.subsection-title {
+  margin: 0 !important;
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.config-hint {
+  padding: 0 !important;
+  margin: 4px 0 0 !important;
+}
+
+.admin-toolbar {
+  padding: 0 !important;
+}
+
+.rol-catalog-toolbar {
+  margin-left: auto;
+}
+
+.rol-catalog-toolbar input {
+  height: 42px;
+  min-width: 260px;
+  background: #ffffff;
+}
+
+.rol-chips {
+  padding: 0 !important;
+}
+
+.rol-chip {
+  background: #eef6ff;
+  color: #1e3a8a;
+  border: 1px solid #bfdbfe;
+  font-weight: 900;
+}
+
+.rol-chip.compact {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.status-pill.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-users-wrap,
+.roles-matrix-wrap {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.admin-users-table {
+  min-width: 760px !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.admin-users-table th,
+.admin-users-table td,
+.roles-matrix th,
+.roles-matrix td {
+  padding: 10px 12px !important;
+  border-color: #e2e8f0 !important;
+}
+
+.roles-matrix {
+  min-width: 980px !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.roles-matrix th {
+  background: #eef2f7 !important;
+}
+
+.roles-matrix .sticky-col {
+  background: #ffffff !important;
+  box-shadow: 4px 0 10px rgba(15, 23, 42, 0.06);
+}
+
+.roles-matrix thead .sticky-col {
+  background: #eef2f7 !important;
+}
+
+.check-cell input {
+  width: 16px;
+  height: 16px;
+  accent-color: #111827;
+}
+
+.roles-actions {
+  justify-content: flex-end;
+  padding: 14px 0 0 !important;
+}
+
+@media (max-width: 900px) {
+  .dashboard {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
+    max-height: none;
+    width: 100%;
+  }
+
+  .main-content {
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .config-header,
+  .roles-header {
+    flex-direction: column;
+  }
+
+  .rol-catalog-toolbar,
+  .rol-catalog-toolbar input {
+    width: 100%;
+    min-width: 0;
+  }
 }
