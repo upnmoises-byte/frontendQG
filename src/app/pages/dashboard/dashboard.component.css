@@ -2966,3 +2966,95 @@ button:disabled {
     min-width: 0;
   }
 }
+
+/* ===== TABLAS CON SCROLL INTERNO CONTROLADO ===== */
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) {
+  display: flex !important;
+  flex-direction: column;
+  max-height: calc(100vh - 210px) !important;
+  min-height: 260px !important;
+  overflow: hidden !important;
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) > .table-wrapper {
+  flex: 1 1 auto !important;
+  min-height: 0;
+  overflow: auto !important;
+  border-radius: 18px;
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) thead th {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) .acciones-column {
+  position: sticky;
+  right: 0;
+  z-index: 7;
+  min-width: 150px;
+  width: 150px;
+  background: #ffffff;
+  box-shadow: -6px 0 12px rgba(15, 23, 42, 0.08);
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) thead .acciones-column {
+  z-index: 9;
+  background: #eef2f7;
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) .acciones-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+
+.main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) .acciones-group > button {
+  width: 100%;
+}
+
+.entrega-error {
+  display: block;
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
+
+.documento-consulta-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.consulta-doc-btn {
+  height: 42px;
+  border: 1px solid #facc15;
+  border-radius: 12px;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.consulta-doc-btn:hover {
+  background: #fde68a;
+}
+
+@media (max-width: 900px) {
+  .main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) {
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  .main-content > .table-card:not(.config-card):not(.roles-permisos-card):not(.reportes-panel) > .table-wrapper {
+    max-height: 70vh;
+  }
+
+  .documento-consulta-row {
+    grid-template-columns: 1fr;
+  }
+}

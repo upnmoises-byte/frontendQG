@@ -15,6 +15,7 @@ import { AdminService, UsuarioAdmin } from '../../services/admin.service';
 import { NotificationService } from '../../services/notification.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReporteService, ReportePedidosPdfParams } from '../../services/reporte.service';
+import { FactilizaDocumentoResponse, FactilizaService } from '../../services/factiliza.service';
 
 const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
   PEDIDOS: [
@@ -96,6 +97,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     correo: ''
   };
   clienteDocumentoError = '';
+  consultandoDocumentoCliente = false;
   clientes: any[] = [];
   clientesFiltrados: Cliente[] = [];
   filtroClienteTexto = '';
@@ -183,6 +185,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   formPago: RegistrarPagoPayload = { monto: 0, metodoPago: 'BCP', codigoPago: '', nota: '' };
   codigoPagoError = '';
   guardandoPago = false;
+  entregaError = '';
+  readonly fechaMinimaEntrega = new Date().toISOString().slice(0, 10);
 
   mostrarModalUsuario = false;
   modoEdicionUsuario = false;
@@ -214,7 +218,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private admin: AdminService,
     private notify: NotificationService,
     private sanitizer: DomSanitizer,
-    private reporte: ReporteService
+    private reporte: ReporteService,
+    private factiliza: FactilizaService
   ) {
     this.nuevoPedido = this.pedidoVacio();
   }
@@ -348,6 +353,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const total = Number(p.total || 0);
     const adelanto = Number(p.adelanto || 0);
     return Math.min(Math.max(adelanto, 0), Math.max(total, 0));
+  }
+
+  private textoMayusculas(valor: unknown): string {
+    return String(valor || '').trim().toUpperCase();
+  }
+
+  private materialesPedido(p: Pedido): string[] {
+    const materiales = (p.detalles || [])
+      .map((d) => this.textoMayusculas(d.material))
+      .filter((m) => !!m);
+    if (materiales.length > 0) {
+      return materiales;
+    }
+    const principal = this.textoMayusculas(p.colorPrincipal);
+    return principal ? [principal] : [];
+  }
+
+  private resumenMaterialesPedido(p: Pedido): string {
+    const materiales = this.materialesPedido(p);
+    return materiales.length ? materiales.join(', ') : '-';
   }
 
   /** Compara solo la parte fecha (yyyy-mm-dd) con rango inclusive. */
@@ -645,7 +670,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       numeroOrden: pedido.numeroOrden,
       cliente: pedido.cliente?.nombre ?? '-',
       cantidad: Number(detalle.cantidad || 0),
-      color: detalle.material || '-',
+      color: this.textoMayusculas(detalle.material) || '-',
       cortes: Number(detalle.cortes || 0),
       ranuras: Number(detalle.ranuras || 0),
       perforaciones: Number(detalle.perforaciones || 0),
@@ -662,9 +687,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       horaIngreso: pedido.horaIngreso,
       fechaEntrega: pedido.fechaEntrega,
       horaEntrega: pedido.horaEntrega,
-      colorPrincipal: detalle.material || '-',
-      colorSecundario: pedido.colorSecundario,
-      colorTercero: pedido.colorTercero,
+      colorPrincipal: this.textoMayusculas(detalle.material) || '-',
+      colorSecundario: this.textoMayusculas(pedido.colorSecundario) || undefined,
+      colorTercero: this.textoMayusculas(pedido.colorTercero) || undefined,
       totalPedido: Number(pedido.total || 0),
       totalPagado: this.totalPagadoPedido(pedido),
       cantoDelgado: detalle.cantoDelgado,
@@ -687,7 +712,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       numeroOrden: pedido.numeroOrden,
       cliente: pedido.cliente?.nombre ?? '-',
       cantidad: Number(pedido.cantidad || 0),
-      color: pedido.colorPrincipal || '-',
+      color: this.resumenMaterialesPedido(pedido),
       cortes: Number(pedido.cortes || 0),
       ranuras: Number(pedido.ranuras || 0),
       perforaciones: Number(pedido.perforaciones || 0),
@@ -703,9 +728,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       horaIngreso: pedido.horaIngreso,
       fechaEntrega: pedido.fechaEntrega,
       horaEntrega: pedido.horaEntrega,
-      colorPrincipal: pedido.colorPrincipal || '-',
-      colorSecundario: pedido.colorSecundario,
-      colorTercero: pedido.colorTercero,
+      colorPrincipal: this.resumenMaterialesPedido(pedido),
+      colorSecundario: undefined,
+      colorTercero: undefined,
       totalPedido: Number(pedido.total || 0),
       totalPagado: this.totalPagadoPedido(pedido),
       saldoPendiente: saldo,
@@ -757,14 +782,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   filaUnicaPorPedido(p: Pedido): PedidoVistaDetalle {
     const saldo = Math.max(Number(p.total || 0) - Number(p.adelanto || 0), 0);
     let cantidad = Number(p.cantidad || 0);
-    let color = p.colorPrincipal || '-';
+    let color = this.resumenMaterialesPedido(p);
     let cortes = Number(p.cortes || 0);
     let ranuras = Number(p.ranuras || 0);
     let perforaciones = Number(p.perforaciones || 0);
 
     if (p.detalles?.length) {
       cantidad = p.detalles.reduce((s, d) => s + Number(d.cantidad || 0), 0);
-      color = p.detalles[0].material || p.colorPrincipal || '-';
       cortes = p.detalles.reduce((s, d) => s + Number(d.cortes || 0), 0);
       ranuras = p.detalles.reduce((s, d) => s + Number(d.ranuras || 0), 0);
       perforaciones = p.detalles.reduce((s, d) => s + Number(d.perforaciones || 0), 0);
@@ -792,8 +816,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       fechaEntrega: p.fechaEntrega,
       horaEntrega: p.horaEntrega,
       colorPrincipal: color,
-      colorSecundario: p.detalles && p.detalles.length > 1 ? `+${p.detalles.length - 1} materiales` : p.colorSecundario,
-      colorTercero: p.colorTercero,
+      colorSecundario: undefined,
+      colorTercero: undefined,
       totalPedido: Number(p.total || 0),
       totalPagado: this.totalPagadoPedido(p),
       saldoPendiente: saldo,
@@ -864,6 +888,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         correo: ''
       };
     this.clienteDocumentoError = '';
+    this.consultandoDocumentoCliente = false;
       this.mostrarModalCliente = true;
     }
 
@@ -1362,6 +1387,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.modoEdicion = false;
       this.mostrarModal = true;
       this.nuevoPedido = this.pedidoVacio();
+      this.entregaError = '';
       const vendedora = this.vendedoraAsignadaPorRol();
       if (vendedora) {
         this.nuevoPedido.vendedora = vendedora;
@@ -1394,6 +1420,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.modoEdicion = true;
           this.mostrarModal = true;
           this.nuevoPedido = JSON.parse(JSON.stringify(original));
+          this.validarFechaHoraEntrega();
         }
       );
     }
@@ -1410,6 +1437,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         correo: ''
       };
     this.clienteDocumentoError = '';
+      this.consultandoDocumentoCliente = false;
       this.mostrarModalCliente = true;
     }
 
@@ -1425,6 +1453,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         correo: cliente.correo || ''
       };
     this.validarDocumentoCliente();
+      this.consultandoDocumentoCliente = false;
       this.mostrarModalCliente = true;
     }
 
@@ -1433,6 +1462,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.modoEdicionCliente = false;
       this.clienteEditandoId = null;
     this.clienteDocumentoError = '';
+    this.consultandoDocumentoCliente = false;
     }
 
     guardarCliente() {
@@ -1457,7 +1487,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       String(c.documento || '').trim() === String(this.nuevoCliente.numeroDocumento || '').trim()
     );
     if (duplicadoDocumento) {
-      this.notify.warning('No se puede registrar. Ya existe un cliente con este DNI/RUC.');
+      this.notify.warning('Ya existe un cliente registrado con ese documento');
       return;
     }
 
@@ -1545,6 +1575,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.validarDocumentoCliente();
   }
 
+  documentoClienteConsultable(): boolean {
+    const tipo = String(this.nuevoCliente.tipoDocumento || '').toUpperCase();
+    const documento = String(this.nuevoCliente.numeroDocumento || '');
+    return (tipo === 'DNI' && documento.length === 8) || (tipo === 'RUC' && documento.length === 11);
+  }
+
+  consultarDocumentoClienteDesdeEnter(event: Event): void {
+    event.preventDefault();
+    if (!this.consultandoDocumentoCliente && this.documentoClienteConsultable()) {
+      this.consultarDocumentoCliente();
+    }
+  }
+
   validarDocumentoCliente(): void {
     const tipo = this.nuevoCliente.tipoDocumento;
     const doc = String(this.nuevoCliente.numeroDocumento || '');
@@ -1557,6 +1600,74 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else if (tipo === 'RUC' && doc.length !== 11) {
       this.clienteDocumentoError = 'RUC inválido. Debe contener 11 dígitos';
     }
+  }
+
+  consultarDocumentoCliente(): void {
+    const tipo = String(this.nuevoCliente.tipoDocumento || '').toUpperCase();
+    const documento = String(this.nuevoCliente.numeroDocumento || '').trim();
+    this.validarDocumentoCliente();
+
+    if (tipo === 'DNI' && documento.length !== 8) {
+      this.clienteDocumentoError = 'DNI inválido';
+      this.notify.warning('DNI inválido');
+      this.cdr.markForCheck();
+      return;
+    }
+    if (tipo === 'RUC' && documento.length !== 11) {
+      this.clienteDocumentoError = 'RUC inválido';
+      this.notify.warning('RUC inválido');
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!['DNI', 'RUC'].includes(tipo)) {
+      this.notify.warning('Seleccione DNI o RUC para consultar.');
+      return;
+    }
+
+    this.consultandoDocumentoCliente = true;
+    this.cdr.markForCheck();
+
+    this.factiliza.consultarDocumento(documento).subscribe({
+      next: (res) => {
+        this.consultandoDocumentoCliente = false;
+        if (!res.success) {
+          this.notify.warning(res.mensaje || 'Documento no encontrado');
+          this.cdr.markForCheck();
+          return;
+        }
+        this.aplicarDatosFactiliza(res);
+        this.notify.success('Datos encontrados');
+        this.cdr.markForCheck();
+      },
+      error: (err: unknown) => {
+        this.consultandoDocumentoCliente = false;
+        this.notify.error(this.mensajeHttp(err, 'No fue posible consultar Factiliza'));
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private aplicarDatosFactiliza(res: FactilizaDocumentoResponse): void {
+    const tipo = String(res.tipoDocumento || this.nuevoCliente.tipoDocumento || '').toUpperCase();
+    if (tipo === 'DNI') {
+      const nombreDni = [
+        res.apellidoPaterno,
+        res.apellidoMaterno,
+        res.nombres
+      ]
+        .map((v) => String(v || '').trim().toUpperCase())
+        .filter(Boolean)
+        .join(' ');
+      this.nuevoCliente.tipoDocumento = 'DNI';
+      this.nuevoCliente.numeroDocumento = res.numeroDocumento || this.nuevoCliente.numeroDocumento;
+      this.nuevoCliente.nombre = nombreDni || this.normalizarMayusculas(res.nombreCompleto);
+    } else if (tipo === 'RUC') {
+      this.nuevoCliente.tipoDocumento = 'RUC';
+      this.nuevoCliente.numeroDocumento = res.ruc || this.nuevoCliente.numeroDocumento;
+      this.nuevoCliente.nombre = this.normalizarMayusculas(res.razonSocial);
+    }
+    this.nuevoCliente.direccion = this.normalizarMayusculas(res.direccion);
+    this.validarDocumentoCliente();
   }
 
   private normalizarNombreCliente(nombre: unknown): string {
@@ -1594,9 +1705,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   cerrarModal() {
     this.mostrarModal = false;
     this.modoEdicion = false;
+    this.entregaError = '';
+  }
+
+  validarFechaHoraEntrega(): void {
+    this.entregaError = '';
+    const fecha = this.nuevoPedido?.fechaEntrega;
+    if (!fecha) {
+      return;
+    }
+    const hoy = new Date();
+    const fechaHoy = hoy.toISOString().slice(0, 10);
+    if (fecha < fechaHoy) {
+      this.entregaError = 'La fecha y hora de entrega no puede ser anterior a la actual.';
+      return;
+    }
+    const hora = this.nuevoPedido?.horaEntrega;
+    if (fecha === fechaHoy && hora) {
+      const horaActual = `${String(hoy.getHours()).padStart(2, '0')}:${String(hoy.getMinutes()).padStart(2, '0')}`;
+      if (hora < horaActual) {
+        this.entregaError = 'La fecha y hora de entrega no puede ser anterior a la actual.';
+      }
+    }
+  }
+
+  puedeGuardarPedido(): boolean {
+    return !this.entregaError;
   }
 
   guardarPedido() {
+    this.validarFechaHoraEntrega();
+    if (this.entregaError) {
+      this.notify.warning(this.entregaError);
+      return;
+    }
     if (!this.nuevoPedido.numeroOrden?.trim()) {
       this.notify.warning('Ingrese el N° de orden');
       return;
@@ -1627,14 +1769,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.nuevoPedido.colorTercero = this.normalizarMayusculas(this.nuevoPedido.colorTercero);
     }
 
+    this.nuevoPedido.adelanto = this.modoEdicion ? Number(this.nuevoPedido.adelanto || 0) : 0;
+
     const totalPedido = Number(this.nuevoPedido.total || 0);
-    const adelantoPedido = Number(this.nuevoPedido.adelanto || 0);
-    if (totalPedido < 0 || adelantoPedido < 0) {
-      this.notify.warning('Total y adelanto no pueden ser negativos');
-      return;
-    }
-    if (adelantoPedido > totalPedido) {
-      this.notify.warning('El adelanto no puede ser mayor al total del pedido');
+    if (totalPedido < 0) {
+      this.notify.warning('El total no puede ser negativo');
       return;
     }
 
@@ -1846,8 +1985,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       () => {
         if (!pedido.id) return;
 
-        this.pedidoService.eliminar(pedido.id).subscribe(() => {
-          this.cargarPedidos();
+        this.pedidoService.eliminar(pedido.id).subscribe({
+          next: () => {
+            this.pedidos = this.pedidos.filter((p) => p.id !== pedido.id);
+            this.recalcularDashboard();
+            this.rebuildVista();
+            this.notify.success('Pedido eliminado correctamente');
+          },
+          error: (err: unknown) => {
+            console.error(err);
+            this.notify.error(this.mensajeHttp(err, 'No se pudo eliminar el pedido'));
+            this.cdr.markForCheck();
+          }
         });
       }
     );

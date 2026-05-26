@@ -992,24 +992,33 @@
             <label>Total del pedido</label>
             <input type="number" min="0" step="0.01" [(ngModel)]="nuevoPedido.total" name="total">
           </div>
-
-          <div class="field">
-            <label>Adelanto</label>
-            <input type="number" min="0" step="0.01" [(ngModel)]="nuevoPedido.adelanto" name="adelanto">
-          </div>
         </div>
 
         <div class="form-row">
           <div class="field">
             <label>Fecha de entrega</label>
-            <input type="date" [(ngModel)]="nuevoPedido.fechaEntrega" name="fechaEntrega">
+            <input
+              type="date"
+              [(ngModel)]="nuevoPedido.fechaEntrega"
+              (ngModelChange)="validarFechaHoraEntrega()"
+              [min]="fechaMinimaEntrega"
+              [class.input-invalid]="entregaError"
+              name="fechaEntrega"
+            >
           </div>
 
           <div class="field">
             <label>Hora de entrega</label>
-            <input type="time" [(ngModel)]="nuevoPedido.horaEntrega" name="horaEntrega">
+            <input
+              type="time"
+              [(ngModel)]="nuevoPedido.horaEntrega"
+              (ngModelChange)="validarFechaHoraEntrega()"
+              [class.input-invalid]="entregaError"
+              name="horaEntrega"
+            >
           </div>
         </div>
+        <small class="field-error entrega-error" *ngIf="entregaError">{{ entregaError }}</small>
 
         <div class="field">
           <label>Observaciones generales</label>
@@ -1125,7 +1134,7 @@
 
       <div class="modal-actions">
         <button type="button" class="cancel-btn" (click)="cerrarModal()">Cancelar</button>
-        <button type="submit" class="save-btn">{{ modoEdicion ? 'Guardar cambios' : 'Crear pedido' }}</button>
+        <button type="submit" class="save-btn" [disabled]="!puedeGuardarPedido()">{{ modoEdicion ? 'Guardar cambios' : 'Crear pedido' }}</button>
       </div>
 
     </form>
@@ -1378,16 +1387,26 @@
 
           <div class="field">
             <label>Número documento</label>
-
-            <input
-              type="text"
-              maxlength="11"
-              inputmode="numeric"
-              [ngModel]="nuevoCliente.numeroDocumento"
-              (ngModelChange)="onDocumentoClienteChange($event)"
-              name="numeroDocumento"
-              [class.input-invalid]="clienteDocumentoError"
-            >
+            <div class="documento-consulta-row">
+              <input
+                type="text"
+                maxlength="11"
+                inputmode="numeric"
+                [ngModel]="nuevoCliente.numeroDocumento"
+                (ngModelChange)="onDocumentoClienteChange($event)"
+                (keydown.enter)="consultarDocumentoClienteDesdeEnter($event)"
+                name="numeroDocumento"
+                [class.input-invalid]="clienteDocumentoError"
+              >
+              <button
+                type="button"
+                class="consulta-doc-btn"
+                (click)="consultarDocumentoCliente()"
+                [disabled]="consultandoDocumentoCliente || !documentoClienteConsultable()"
+              >
+                {{ consultandoDocumentoCliente ? 'Consultando...' : 'Consultar DNI/RUC' }}
+              </button>
+            </div>
             <small class="field-error" *ngIf="clienteDocumentoError">{{ clienteDocumentoError }}</small>
           </div>
 
