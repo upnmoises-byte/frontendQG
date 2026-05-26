@@ -133,45 +133,45 @@
 
       <section class="stats-grid">
         <div class="stat-card">
-          <h3>Total Pedidos</h3>
-          <strong>{{ totalPedidos }}</strong>
-          <span>Registrados</span>
+          <h3>Total pedidos activos</h3>
+          <strong>{{ totalPedidosActivos }}</strong>
+          <span>Pedidos únicos no entregados</span>
         </div>
 
         <div class="stat-card">
-          <h3>En Corte</h3>
+          <h3>Pedidos en corte</h3>
           <strong>{{ totalCorte }}</strong>
-          <span>Pendientes en corte</span>
+          <span>Órdenes únicas</span>
         </div>
 
         <div class="stat-card">
-          <h3>En Canteado</h3>
+          <h3>Pedidos en canteado</h3>
           <strong>{{ totalCanteado }}</strong>
-          <span>Zona canto</span>
+          <span>Órdenes únicas</span>
         </div>
 
         <div class="stat-card">
-          <h3>Despacho</h3>
+          <h3>Pedidos en especiales</h3>
+          <strong>{{ totalPedidosEspeciales }}</strong>
+          <span>Órdenes únicas</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Pedidos en despacho</h3>
           <strong>{{ totalDespacho }}</strong>
-          <span>Por entregar</span>
+          <span>Órdenes únicas</span>
         </div>
 
         <div class="stat-card">
-          <h3>Entregados</h3>
+          <h3>Pedidos entregados</h3>
           <strong>{{ totalEntregados }}</strong>
           <span>Finalizados</span>
         </div>
 
         <div class="stat-card danger-card">
-          <h3>Vencidos</h3>
+          <h3>Pedidos vencidos</h3>
           <strong>{{ pedidosVencidos }}</strong>
           <span>Fecha entrega vencida</span>
-        </div>
-
-        <div class="stat-card">
-          <h3>Tiempo promedio</h3>
-          <strong>{{ promedioDiasEntrega }}</strong>
-          <span>Días ingreso a entrega</span>
         </div>
       </section>
 
@@ -202,6 +202,16 @@
 
                 <div class="progress-item">
                     <div>
+                    <span>Especiales</span>
+                    <strong>{{ totalPedidosEspeciales }} pedidos</strong>
+                    </div>
+                    <div class="progress-bar">
+                    <div class="progress-fill especiales" [style.width.%]="totalPedidos ? (totalPedidosEspeciales / totalPedidos) * 100 : 0"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div>
                     <span>Despacho</span>
                     <strong>{{ totalDespacho }} pedidos</strong>
                     </div>
@@ -222,27 +232,41 @@
             </div>
 
             <div class="premium-card">
-            <h2>Producción por máquina</h2>
+              <h2>Producción por máquina</h2>
 
-            <div class="metric-row">
-                <span>Escuadradora</span>
-                <strong>{{ totalEscuadradora }} pedidos</strong>
-            </div>
-
-            <div class="metric-row">
-                <span>Seccionadora</span>
-                <strong>{{ totalSeccionadora }} pedidos</strong>
-            </div>
-
-            <div class="metric-row highlight">
-                <span>Planchas pendientes Escuadradora</span>
+              <div class="metric-row highlight">
+                <span>Planchas Escuadradora</span>
                 <strong>{{ planchasPendientesEscuadradora }}</strong>
+              </div>
+
+              <div class="metric-row highlight">
+                <span>Planchas Seccionadora</span>
+                <strong>{{ planchasPendientesSeccionadora }}</strong>
+              </div>
             </div>
 
-            <div class="metric-row highlight">
-                <span>Planchas pendientes Seccionadora</span>
-                <strong>{{ planchasPendientesSeccionadora }}</strong>
+            <div class="premium-card">
+              <h2>Zona canto</h2>
+              <div class="metric-row"><span>Canto delgado total (metros)</span><strong>{{ cantoDelgadoTotal }}</strong></div>
+              <div class="metric-row"><span>Canto grueso total (metros)</span><strong>{{ cantoGruesoTotal }}</strong></div>
+              <div class="metric-row"><span>Canto delgado 36mm total (metros)</span><strong>{{ cantoDelgado36mmTotal }}</strong></div>
+              <div class="metric-row"><span>Canto grueso 36mm total (metros)</span><strong>{{ cantoGrueso36mmTotal }}</strong></div>
             </div>
+
+            <div class="premium-card">
+              <h2>Especiales</h2>
+              <div class="metric-row highlight">
+                <span>Total especiales</span>
+                <strong>{{ totalEspecialesOperativos }}</strong>
+              </div>
+            </div>
+
+            <div class="premium-card">
+              <h2>Despacho</h2>
+              <div class="metric-row highlight">
+                <span>Pedidos pendientes de despacho</span>
+                <strong>{{ pedidosPendientesDespacho }}</strong>
+              </div>
             </div>
 
             <div class="dashboard-card vendedores-card">
@@ -851,7 +875,7 @@
           <tr *ngIf="pedidosVistaRows.length === 0">
 
             <td colspan="21" class="empty">
-              No hay pedidos registrados.
+              No se encontraron registros
             </td>
 
           </tr>

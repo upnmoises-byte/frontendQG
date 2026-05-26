@@ -40,6 +40,9 @@ export interface Pedido {
   horaIngreso?: string;
   fechaEntrega?: string;
   horaEntrega?: string;
+  fechaModificacion?: string;
+  horaModificacion?: string;
+  usuarioModificacion?: string;
 
   prioridad?: number;
   total?: number;

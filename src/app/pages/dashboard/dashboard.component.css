@@ -750,6 +750,10 @@ tr:hover {
   background: #f97316;
 }
 
+.progress-fill.especiales {
+  background: #8b5cf6;
+}
+
 .progress-fill.entregado {
   background: #22c55e;
 }

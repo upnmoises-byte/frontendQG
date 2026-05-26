@@ -103,8 +103,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   filtroClienteTexto = '';
 
   totalPedidos = 0;
+  totalPedidosActivos = 0;
   totalCorte = 0;
   totalCanteado = 0;
+  totalPedidosEspeciales = 0;
   totalDespacho = 0;
   totalEntregados = 0;
 
@@ -127,6 +129,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   porcentajeEntregados = 0;
   totalVendedoras = 0;
   totalEspeciales = 0;
+  totalEspecialesOperativos = 0;
+  cantoDelgadoTotal = 0;
+  cantoGruesoTotal = 0;
+  cantoDelgado36mmTotal = 0;
+  cantoGrueso36mmTotal = 0;
+  pedidosPendientesDespacho = 0;
   pedidosVencidos = 0;
   promedioDiasEntrega = 0;
 
@@ -1717,20 +1725,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().slice(0, 10);
     if (fecha < fechaHoy) {
-      this.entregaError = 'La fecha y hora de entrega no puede ser anterior a la actual.';
+      this.entregaError = 'La fecha y hora de entrega deben ser posteriores al momento actual.';
       return;
     }
     const hora = this.nuevoPedido?.horaEntrega;
     if (fecha === fechaHoy && hora) {
       const horaActual = `${String(hoy.getHours()).padStart(2, '0')}:${String(hoy.getMinutes()).padStart(2, '0')}`;
-      if (hora < horaActual) {
-        this.entregaError = 'La fecha y hora de entrega no puede ser anterior a la actual.';
+      if (hora <= horaActual) {
+        this.entregaError = 'La fecha y hora de entrega deben ser posteriores al momento actual.';
       }
     }
   }
 
   puedeGuardarPedido(): boolean {
-    return !this.entregaError;
+    return !!this.nuevoPedido?.cliente &&
+      !!this.nuevoPedido?.fechaEntrega &&
+      !!this.nuevoPedido?.horaEntrega &&
+      !!this.nuevoPedido?.vendedora &&
+      Number(this.nuevoPedido?.total || 0) > 0 &&
+      !!this.nuevoPedido?.detalles?.length &&
+      !this.entregaError;
   }
 
   guardarPedido() {
@@ -1746,6 +1760,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (!this.nuevoPedido.cliente) {
       this.notify.warning('Seleccione un cliente');
+      return;
+    }
+
+    if (!this.nuevoPedido.fechaEntrega) {
+      this.notify.warning('Seleccione fecha de entrega');
+      return;
+    }
+
+    if (!this.nuevoPedido.horaEntrega) {
+      this.notify.warning('Seleccione hora de entrega');
       return;
     }
 
@@ -1772,8 +1796,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.nuevoPedido.adelanto = this.modoEdicion ? Number(this.nuevoPedido.adelanto || 0) : 0;
 
     const totalPedido = Number(this.nuevoPedido.total || 0);
-    if (totalPedido < 0) {
-      this.notify.warning('El total no puede ser negativo');
+    if (totalPedido <= 0) {
+      this.notify.warning('Ingrese un total mayor a 0');
       return;
     }
 
@@ -1847,41 +1871,139 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   recalcularDashboard() {
-    const lineas = this.pedidosADetalleVista(this.pedidos);
-    this.totalPedidos = this.pedidos.length;
-    this.totalCorte = lineas.filter((r) => r.estado === 'CORTE').length;
-    this.totalCanteado = lineas.filter((r) => r.estado === 'CANTEADO').length;
-    this.totalDespacho = lineas.filter((r) => r.estado === 'DESPACHO').length;
-    this.totalEntregados = lineas.filter((r) => r.estado === 'ENTREGADO').length;
-    this.totalEspeciales = lineas.filter((r) => r.estado === 'ESPECIALES').length;
-    this.pedidosVencidos = lineas.filter((r) => this.esPedidoVencido(r)).length;
+    const pedidosUnicos = this.pedidosUnicosPorOrden(this.pedidos);
+    const detalles = this.detallesDashboard(pedidosUnicos);
+
+    this.totalPedidos = pedidosUnicos.length;
+    this.totalEntregados = pedidosUnicos.filter((p) => this.pedidoEntregado(p)).length;
+    this.totalPedidosActivos = pedidosUnicos.filter((p) => !this.pedidoEntregado(p)).length;
+    this.totalCorte = this.contarPedidosPorEstado(pedidosUnicos, 'CORTE');
+    this.totalCanteado = this.contarPedidosPorEstado(pedidosUnicos, 'CANTEADO');
+    this.totalPedidosEspeciales = this.contarPedidosPorEstado(pedidosUnicos, 'ESPECIALES');
+    this.totalEspeciales = this.totalPedidosEspeciales;
+    this.totalDespacho = this.contarPedidosPorEstado(pedidosUnicos, 'DESPACHO');
+    this.pedidosPendientesDespacho = this.totalDespacho;
+    this.pedidosVencidos = pedidosUnicos.filter((p) => this.esPedidoVencidoPedido(p)).length;
     this.promedioDiasEntrega = this.calcularPromedioDiasEntrega();
 
-    const detallesCorte = lineas.filter((r) => r.estado === 'CORTE');
-    this.totalEscuadradora = detallesCorte.filter((p) => p.maquina?.toUpperCase() === 'ESCUADRADORA').length;
-    this.totalSeccionadora = detallesCorte.filter((p) => p.maquina?.toUpperCase() === 'SECCIONADORA').length;
-    this.planchasPendientesEscuadradora = detallesCorte
-      .filter((p) => p.maquina?.toUpperCase() === 'ESCUADRADORA')
-      .reduce((t, p) => t + Number(p.cantidad || 0), 0);
-    this.planchasPendientesSeccionadora = detallesCorte
-      .filter((p) => p.maquina?.toUpperCase() === 'SECCIONADORA')
-      .reduce((t, p) => t + Number(p.cantidad || 0), 0);
+    const detallesPendientes = detalles.filter((d) => d.estado !== 'ENTREGADO');
+    this.planchasPendientesEscuadradora = detallesPendientes
+      .filter((d) => d.maquina === 'ESCUADRADORA')
+      .reduce((t, d) => t + d.cantidad, 0);
+    this.planchasPendientesSeccionadora = detallesPendientes
+      .filter((d) => d.maquina === 'SECCIONADORA')
+      .reduce((t, d) => t + d.cantidad, 0);
+    this.totalEscuadradora = this.planchasPendientesEscuadradora;
+    this.totalSeccionadora = this.planchasPendientesSeccionadora;
 
-    this.totalDiana = this.pedidos.filter((p) => p.vendedora === 'DIANA').length;
-    this.totalAnabel = this.pedidos.filter((p) => p.vendedora === 'ANABEL').length;
-    this.totalIsamar = this.pedidos.filter((p) => p.vendedora === 'ISAMAR').length;
+    const detallesCanteado = detalles.filter((d) => d.estado === 'CANTEADO');
+    this.cantoDelgadoTotal = detallesCanteado.reduce((t, d) => t + d.cantoDelgado, 0);
+    this.cantoGruesoTotal = detallesCanteado.reduce((t, d) => t + d.cantoGrueso, 0);
+    this.cantoDelgado36mmTotal = detallesCanteado.reduce((t, d) => t + d.cantoDelgado36mm, 0);
+    this.cantoGrueso36mmTotal = detallesCanteado.reduce((t, d) => t + d.cantoGrueso36mm, 0);
 
-    this.pedidosDiana = this.pedidos.filter((p) => p.vendedora === 'DIANA' && p.estado !== 'ENTREGADO').length;
-    this.pedidosAnabel = this.pedidos.filter((p) => p.vendedora === 'ANABEL' && p.estado !== 'ENTREGADO').length;
-    this.pedidosIsamar = this.pedidos.filter((p) => p.vendedora === 'ISAMAR' && p.estado !== 'ENTREGADO').length;
-    this.pedidosMelissa = this.pedidos.filter((p) => p.vendedora === 'MELISSA' && p.estado !== 'ENTREGADO').length;
+    this.totalEspecialesOperativos = detalles
+      .filter((d) => d.estado !== 'ENTREGADO')
+      .reduce((t, d) => t + d.ranuras + d.perforaciones + d.especiales, 0);
 
-    this.totalPedidosProduccion = this.pedidos.filter((p) => p.estado !== 'ENTREGADO').length;
+    this.totalDiana = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'DIANA').length;
+    this.totalAnabel = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'ANABEL').length;
+    this.totalIsamar = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'ISAMAR').length;
+
+    this.pedidosDiana = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'DIANA' && !this.pedidoEntregado(p)).length;
+    this.pedidosAnabel = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'ANABEL' && !this.pedidoEntregado(p)).length;
+    this.pedidosIsamar = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'ISAMAR' && !this.pedidoEntregado(p)).length;
+    this.pedidosMelissa = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'MELISSA' && !this.pedidoEntregado(p)).length;
+
+    this.totalPedidosProduccion = this.totalPedidosActivos;
     this.porcentajeCorte = this.totalPedidos ? Math.round((this.totalCorte / this.totalPedidos) * 100) : 0;
     this.porcentajeCanteado = this.totalPedidos ? Math.round((this.totalCanteado / this.totalPedidos) * 100) : 0;
     this.porcentajeDespacho = this.totalPedidos ? Math.round((this.totalDespacho / this.totalPedidos) * 100) : 0;
     this.porcentajeEntregados = this.totalPedidos ? Math.round((this.totalEntregados / this.totalPedidos) * 100) : 0;
-    this.totalVendedoras = this.pedidos.length || 1;
+    this.totalVendedoras = this.totalPedidos || 1;
+  }
+
+  private pedidosUnicosPorOrden(lista: Pedido[]): Pedido[] {
+    const mapa = new Map<string, Pedido>();
+    for (const p of lista) {
+      const clave = String(p.numeroOrden || p.id || '').trim().toUpperCase();
+      if (clave && !mapa.has(clave)) {
+        mapa.set(clave, p);
+      }
+    }
+    return [...mapa.values()];
+  }
+
+  private estadosPedido(p: Pedido): string[] {
+    if (p.detalles?.length) {
+      return [...new Set(p.detalles.map((d) => this.estadoLineaPedido(p, d)))];
+    }
+    return [this.estadoLineaPedido(p)];
+  }
+
+  private pedidoEntregado(p: Pedido): boolean {
+    const estados = this.estadosPedido(p);
+    return estados.length > 0 && estados.every((estado) => estado === 'ENTREGADO');
+  }
+
+  private contarPedidosPorEstado(pedidos: Pedido[], estado: string): number {
+    return pedidos.filter((p) => this.estadosPedido(p).includes(estado)).length;
+  }
+
+  private vendedoraPedido(p: Pedido): string {
+    return String(p.vendedora || '').toUpperCase();
+  }
+
+  private esPedidoVencidoPedido(p: Pedido): boolean {
+    if (!p.fechaEntrega || this.pedidoEntregado(p)) {
+      return false;
+    }
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const entrega = new Date(`${p.fechaEntrega}T00:00:00`);
+    return Number.isFinite(entrega.getTime()) && entrega < hoy;
+  }
+
+  private detallesDashboard(pedidos: Pedido[]): Array<{
+    estado: string;
+    maquina: string;
+    cantidad: number;
+    cantoDelgado: number;
+    cantoGrueso: number;
+    cantoDelgado36mm: number;
+    cantoGrueso36mm: number;
+    ranuras: number;
+    perforaciones: number;
+    especiales: number;
+  }> {
+    return pedidos.flatMap((p) => {
+      if (p.detalles?.length) {
+        return p.detalles.map((d) => ({
+          estado: this.estadoLineaPedido(p, d),
+          maquina: String(d.maquina || p.maquina || '').toUpperCase(),
+          cantidad: Number(d.cantidad || 0),
+          cantoDelgado: Number(d.cantoDelgado || 0),
+          cantoGrueso: Number(d.cantoGrueso || 0),
+          cantoDelgado36mm: Number(d.cantoDelgado36mm || 0),
+          cantoGrueso36mm: Number(d.cantoGrueso36mm || 0),
+          ranuras: Number(d.ranuras || 0),
+          perforaciones: Number(d.perforaciones || 0),
+          especiales: (d.especiales || []).reduce((t, e) => t + Number(e.cantidad || 0), 0)
+        }));
+      }
+      return [{
+        estado: this.estadoLineaPedido(p),
+        maquina: String(p.maquina || '').toUpperCase(),
+        cantidad: Number(p.cantidad || 0),
+        cantoDelgado: Number(p.cantoDelgado || 0),
+        cantoGrueso: Number(p.cantoGrueso || 0),
+        cantoDelgado36mm: Number(p.cantoDelgado36mm || 0),
+        cantoGrueso36mm: Number(p.cantoGrueso36mm || 0),
+        ranuras: Number(p.ranuras || 0),
+        perforaciones: Number(p.perforaciones || 0),
+        especiales: Number(p.cantidadEspeciales || 0)
+      }];
+    });
   }
 
   esPedidoVencido(row: PedidoVistaDetalle): boolean {
@@ -2018,7 +2140,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (estadoNorm === 'ENTREGADO' && this.obtenerSaldo(pedido) > 0) {
       this.notify.warning(
-        'No puede pasar a ENTREGADO con saldo pendiente. Cancele la deuda o registre abonos antes.'
+        'El pedido debe estar cancelado para marcarse como entregado.'
       );
       revertir();
       return;
