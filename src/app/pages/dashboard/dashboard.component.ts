@@ -95,6 +95,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     direccion: '',
     correo: ''
   };
+  clienteDocumentoError = '';
   clientes: any[] = [];
   clientesFiltrados: Cliente[] = [];
   filtroClienteTexto = '';
@@ -230,13 +231,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private vendedoraAsignadaPorRol(): string | null {
     const r = (this.auth.usuario()?.rol ?? '').toUpperCase();
-    const map: Record<string, string> = {
-      VENTAS_1: 'ISAMAR',
-      VENTAS_2: 'ANABEL',
-      VENTAS_3: 'DIANA',
-      VENTAS_4: 'MELISSA'
-    };
-    return map[r] ?? null;
+    if (['VENTAS_1', 'VENTAS_2', 'VENTAS_3', 'VENTAS_4', 'VENDEDORA'].includes(r)) {
+      return this.auth.usuario()?.nombre?.trim() || null;
+    }
+    return null;
   }
 
   opcionesVendedoraSelect(): { value: string; label: string }[] {
@@ -251,7 +249,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ];
     const fija = this.vendedoraAsignadaPorRol();
     if (fija) {
-      return todas.filter((o) => o.value === fija);
+      const existe = todas.some((o) => o.value.toUpperCase() === fija.toUpperCase());
+      return existe
+        ? todas.filter((o) => o.value.toUpperCase() === fija.toUpperCase())
+        : [{ value: fija, label: fija }];
     }
     return todas;
   }
@@ -261,7 +262,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!v) {
       return lista;
     }
-    return lista.filter((p) => p.vendedora === v);
+    return lista.filter((p) => (p.vendedora || '').toUpperCase() === v.toUpperCase());
+  }
+
+  private timestampIngreso(p: Pedido): number {
+    const fecha = p.fechaIngreso || '1900-01-01';
+    const hora = p.horaIngreso || '00:00:00';
+    const t = new Date(`${fecha}T${hora}`).getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  private ordenarPedidosProduccion(lista: Pedido[]): Pedido[] {
+    return [...lista].sort((a, b) => {
+      const pa = a.prioridad ?? 0;
+      const pb = b.prioridad ?? 0;
+      if (pa !== pb) {
+        return pb - pa;
+      }
+      return this.timestampIngreso(b) - this.timestampIngreso(a);
+    });
+  }
+
+  private ordenarFilasProduccion(lista: PedidoVistaDetalle[]): PedidoVistaDetalle[] {
+    return [...lista].sort((a, b) => {
+      const pa = a.prioridad ?? 0;
+      const pb = b.prioridad ?? 0;
+      if (pa !== pb) {
+        return pb - pa;
+      }
+      return this.timestampIngreso(b.pedidoOriginal) - this.timestampIngreso(a.pedidoOriginal);
+    });
   }
 
   private sessionUsuario(): UsuarioSesion | null {
@@ -313,6 +343,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private saldoPedido(p: Pedido): number {
     return Math.max(Number(p.total || 0) - Number(p.adelanto || 0), 0);
+  }
+
+  private totalPagadoPedido(p: Pedido): number {
+    const total = Number(p.total || 0);
+    const adelanto = Number(p.adelanto || 0);
+    return Math.min(Math.max(adelanto, 0), Math.max(total, 0));
   }
 
   /** Compara solo la parte fecha (yyyy-mm-dd) con rango inclusive. */
@@ -493,9 +529,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.vistaActual === 'REPORTES') {
       this.columnKeys = new Set();
-      const ordenados = [...this.pedidos].sort(
-        (a, b) => (a.prioridad ?? 0) - (b.prioridad ?? 0)
-      );
+      const ordenados = this.ordenarPedidosProduccion(this.pedidos);
       const base = this.aplicarFiltroRolPedidos(ordenados);
       const filtrados = base.filter((p) => this.coincideFiltrosReporte(p));
       this.reportResumen = this.calcularResumenPedidos(filtrados);
@@ -508,9 +542,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const definicion = COLUMNAS_POR_VISTA[this.vistaActual];
     this.columnKeys = new Set(definicion ?? COLUMNAS_POR_VISTA['PEDIDOS']);
 
-    const ordenados = [...this.pedidos].sort(
-      (a, b) => (a.prioridad ?? 0) - (b.prioridad ?? 0)
-    );
+    const ordenados = this.ordenarPedidosProduccion(this.pedidos);
 
     const filtrados = ordenados.filter((p) => {
       const nombreCliente = p.cliente?.nombre?.toLowerCase() ?? '';
@@ -534,10 +566,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return true;
     });
 
-    const filas = this.pedidosADetalleVista(filtrados);
+    const filas = this.ordenarFilasProduccion(this.pedidosADetalleVista(filtrados));
 
     if (this.vistaActual === 'PAGOS') {
-      this.pedidosVistaRows = filtrados.map((p) => this.filaUnicaPorPedido(p));
+      this.pedidosVistaRows = this.ordenarFilasProduccion(filtrados.map((p) => this.filaUnicaPorPedido(p)));
     } else if (this.vistaActual === 'CORTE') {
       this.pedidosVistaRows = this.filtrarFilasPorZona(filas, 'CORTE', this.subVistaCorte);
     } else if (this.vistaActual === 'CANTEADO') {
@@ -631,6 +663,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       colorPrincipal: detalle.material || '-',
       colorSecundario: pedido.colorSecundario,
       colorTercero: pedido.colorTercero,
+      totalPedido: Number(pedido.total || 0),
+      totalPagado: this.totalPagadoPedido(pedido),
       cantoDelgado: detalle.cantoDelgado,
       cantoGrueso: detalle.cantoGrueso,
       cantoDelgado36mm: detalle.cantoDelgado36mm,
@@ -670,6 +704,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       colorPrincipal: pedido.colorPrincipal || '-',
       colorSecundario: pedido.colorSecundario,
       colorTercero: pedido.colorTercero,
+      totalPedido: Number(pedido.total || 0),
+      totalPagado: this.totalPagadoPedido(pedido),
       saldoPendiente: saldo,
       esFilaPedidoCompleto: false
     };
@@ -756,6 +792,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       colorPrincipal: color,
       colorSecundario: p.detalles && p.detalles.length > 1 ? `+${p.detalles.length - 1} materiales` : p.colorSecundario,
       colorTercero: p.colorTercero,
+      totalPedido: Number(p.total || 0),
+      totalPagado: this.totalPagadoPedido(p),
       saldoPendiente: saldo,
       esFilaPedidoCompleto: true
     };
@@ -823,6 +861,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         direccion: '',
         correo: ''
       };
+    this.clienteDocumentoError = '';
       this.mostrarModalCliente = true;
     }
 
@@ -1238,6 +1277,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.modoEdicion = false;
       this.mostrarModal = true;
       this.nuevoPedido = this.pedidoVacio();
+    const vendedora = this.vendedoraAsignadaPorRol();
+    if (vendedora) {
+      this.nuevoPedido.vendedora = vendedora;
+    }
     }
 
     editarPedido(row: PedidoVistaDetalle | Pedido) {
@@ -1265,6 +1308,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         direccion: '',
         correo: ''
       };
+    this.clienteDocumentoError = '';
       this.mostrarModalCliente = true;
     }
 
@@ -1279,6 +1323,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         direccion: cliente.direccion || '',
         correo: cliente.correo || ''
       };
+    this.validarDocumentoCliente();
       this.mostrarModalCliente = true;
     }
 
@@ -1286,21 +1331,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.mostrarModalCliente = false;
       this.modoEdicionCliente = false;
       this.clienteEditandoId = null;
+    this.clienteDocumentoError = '';
     }
 
     guardarCliente() {
+    this.validarDocumentoCliente();
+    if (this.clienteDocumentoError) {
+      this.notify.warning(this.clienteDocumentoError);
+      return;
+    }
+
     if (!this.nuevoCliente.numeroDocumento) {
       this.notify.warning('Ingrese número de documento');
       return;
     }
 
-    if (this.nuevoCliente.tipoDocumento === 'DNI' && this.nuevoCliente.numeroDocumento.length !== 8) {
-      this.notify.warning('El DNI debe tener 8 dígitos');
+    if (!this.nuevoCliente.nombre?.trim()) {
+      this.notify.warning('Ingrese nombre o razón social');
       return;
     }
 
-    if (this.nuevoCliente.tipoDocumento === 'RUC' && this.nuevoCliente.numeroDocumento.length !== 11) {
-      this.notify.warning('El RUC debe tener 11 dígitos');
+    const duplicadoDocumento = this.clientes.some((c) =>
+      c.id !== this.clienteEditandoId &&
+      String(c.documento || '').trim() === String(this.nuevoCliente.numeroDocumento || '').trim()
+    );
+    if (duplicadoDocumento) {
+      this.notify.warning('Ya existe un cliente registrado con este documento.');
+      return;
+    }
+
+    const nombreNormalizado = this.normalizarNombreCliente(this.nuevoCliente.nombre);
+    const duplicadoNombre = this.clientes.some((c) =>
+      c.id !== this.clienteEditandoId &&
+      this.normalizarNombreCliente(c.nombre) === nombreNormalizado &&
+      String(c.documento || '').trim() !== String(this.nuevoCliente.numeroDocumento || '').trim()
+    );
+    if (duplicadoNombre) {
+      this.notify.warning('Ya existe un cliente registrado con este nombre o razón social.');
       return;
     }
 
@@ -1324,11 +1391,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     req.subscribe({
       next: () => {
-        this.notify.success(this.modoEdicionCliente ? 'Cliente actualizado.' : 'Cliente registrado.');
+        this.notify.success(this.modoEdicionCliente ? 'Cliente actualizado correctamente' : 'Cliente registrado correctamente');
         this.cargarClientes();
         this.mostrarModalCliente = false;
         this.modoEdicionCliente = false;
         this.clienteEditandoId = null;
+        this.clienteDocumentoError = '';
         this.nuevoCliente = {
           tipoDocumento: 'DNI',
           numeroDocumento: '',
@@ -1350,6 +1418,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return String(valor || '')
       .replace(/\D/g, '')
       .slice(0, max);
+  }
+
+  onTipoDocumentoClienteChange(): void {
+    const max = this.nuevoCliente.tipoDocumento === 'DNI' ? 8 : 11;
+    this.nuevoCliente.numeroDocumento = this.limpiarSoloNumeros(this.nuevoCliente.numeroDocumento, max);
+    this.validarDocumentoCliente();
+  }
+
+  onDocumentoClienteChange(valor: unknown): void {
+    const max = this.nuevoCliente.tipoDocumento === 'DNI' ? 8 : 11;
+    this.nuevoCliente.numeroDocumento = this.limpiarSoloNumeros(valor, max);
+    this.validarDocumentoCliente();
+  }
+
+  validarDocumentoCliente(): void {
+    const tipo = this.nuevoCliente.tipoDocumento;
+    const doc = String(this.nuevoCliente.numeroDocumento || '');
+    this.clienteDocumentoError = '';
+    if (!doc) {
+      return;
+    }
+    if (tipo === 'DNI' && doc.length !== 8) {
+      this.clienteDocumentoError = 'DNI inválido. Debe contener 8 dígitos';
+    } else if (tipo === 'RUC' && doc.length !== 11) {
+      this.clienteDocumentoError = 'RUC inválido. Debe contener 11 dígitos';
+    }
+  }
+
+  private normalizarNombreCliente(nombre: unknown): string {
+    return String(nombre || '').trim().replace(/\s+/g, ' ').toUpperCase();
   }
 
   cargarClientes() {
@@ -1460,10 +1558,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pedidoService.listar().subscribe({
       next: (data) => {
         this.pedidos = this.aplicarFiltroRolPedidos(
-          data.map((p: any) => ({
-            ...p,
-            saldoPendiente: Number(p.total || 0) - Number(p.adelanto || 0)
-          }))
+          this.ordenarPedidosProduccion(data)
         );
 
         this.recalcularDashboard();
@@ -1631,12 +1726,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const usuario = this.usuarioParaAuditoria();
 
     if (row.detalleId) {
+      console.debug('[Pedidos] Actualizando estado de detalle', {
+        pedidoId: pedido.id,
+        detalleId: row.detalleId,
+        estado: estadoNorm
+      });
       this.pedidoService
         .actualizarEstadoDetalle(pedido.id, row.detalleId, estadoNorm, usuario)
         .subscribe({
-          next: () => {
+          next: (pedidoActualizado) => {
             row.estado = estadoNorm;
-            this.cargarPedidos();
+            this.reemplazarPedidoEnMemoria(pedidoActualizado);
+            this.notify.success('Estado actualizado correctamente');
           },
           error: (err: unknown) => {
             console.error(err);
@@ -1649,14 +1750,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const actualizado: Pedido = JSON.parse(JSON.stringify(pedido));
     actualizado.estado = estadoNorm;
+    console.debug('[Pedidos] Actualizando estado de pedido sin detalles', {
+      pedidoId: pedido.id,
+      estado: estadoNorm
+    });
     this.pedidoService.actualizar(pedido.id, actualizado, usuario).subscribe({
-      next: () => this.cargarPedidos(),
+      next: (pedidoActualizado) => {
+        this.reemplazarPedidoEnMemoria(pedidoActualizado);
+        this.notify.success('Estado actualizado correctamente');
+      },
       error: (err: unknown) => {
         console.error(err);
         this.notify.error(this.mensajeHttp(err, 'No se pudo actualizar el estado'));
         revertir();
       }
     });
+  }
+
+  private reemplazarPedidoEnMemoria(pedidoActualizado: Pedido): void {
+    this.pedidos = this.ordenarPedidosProduccion(
+      this.pedidos.map((p) => (p.id === pedidoActualizado.id ? pedidoActualizado : p))
+    );
+    this.recalcularDashboard();
+    this.rebuildVista();
+    this.cdr.markForCheck();
   }
 
   moverArriba(index: number) {
@@ -1788,7 +1905,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.usuarioParaAuditoria()
     ).subscribe({
       next: () => {
-        console.log('Pedido actualizado');
+        this.notify.success('Pedido actualizado correctamente');
       },
       error: (err: any) => {
         console.error('Error al actualizar inline', err);
@@ -1808,7 +1925,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.usuarioParaAuditoria()
     ).subscribe({
       next: () => {
-        console.log('Vendedora actualizada');
+        this.notify.success('Vendedora actualizada correctamente');
       },
       error: (err: any) => {
         console.error(err);

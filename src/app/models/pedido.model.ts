@@ -103,6 +103,8 @@ export interface PedidoVistaDetalle {
   colorPrincipal: string;
   colorSecundario?: string;
   colorTercero?: string;
+  totalPedido?: number;
+  totalPagado?: number;
   cantoDelgado?: number;
   cantoGrueso?: number;
   cantoDelgado36mm?: number;

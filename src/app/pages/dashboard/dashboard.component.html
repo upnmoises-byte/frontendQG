@@ -19,7 +19,7 @@
         (click)="seleccionarVista('DASHBOARD')"
         [class.active]="vistaActual === 'DASHBOARD'"
       >
-        <span>📊</span> Dashboard
+        Dashboard
       </a>
 
       <a
@@ -27,7 +27,7 @@
         (click)="seleccionarVista('PEDIDOS')"
         [class.active]="vistaActual === 'PEDIDOS'"
       >
-        <span>📦</span> Pedidos Generales
+        Pedidos Generales
       </a>
 
       <a
@@ -35,7 +35,7 @@
         (click)="seleccionarVista('CLIENTES')"
         [class.active]="vistaActual === 'CLIENTES'"
       >
-        <span>👥</span> Clientes
+        Clientes
       </a>
 
       <a
@@ -43,7 +43,7 @@
         (click)="seleccionarVista('PAGOS')"
         [class.active]="vistaActual === 'PAGOS'"
       >
-        <span>💳</span> Pagos
+        Pagos
       </a>
 
       <a
@@ -51,35 +51,35 @@
         (click)="seleccionarVista('CORTE')"
         [class.active]="vistaActual === 'CORTE'"
       >
-        <span>🏭</span> Zona Corte
+        Zona Corte
       </a>
 
       <a *ngIf="puedeVerNav('CANTEADO')" (click)="seleccionarVista('CANTEADO')" [class.active]="vistaActual === 'CANTEADO'">
-        <span>🪵</span> Zona Canto
+        Zona Canto
       </a>
 
       <a *ngIf="puedeVerNav('ESPECIALES')" (click)="seleccionarVista('ESPECIALES')" [class.active]="vistaActual === 'ESPECIALES'">
-        <span>⚙️</span> Especiales
+        Especiales
       </a>
 
       <a *ngIf="puedeVerNav('DESPACHO')" (click)="seleccionarVista('DESPACHO')" [class.active]="vistaActual === 'DESPACHO'">
-        <span>🚚</span> Despacho
+        Despacho
       </a>
 
       <a *ngIf="puedeVerNav('ENTREGADO')" (click)="seleccionarVista('ENTREGADO')" [class.active]="vistaActual === 'ENTREGADO'">
-        <span>✅</span> Entregados
+        Entregados
       </a>
 
       <a *ngIf="puedeVerNav('REPORTES')" (click)="seleccionarVista('REPORTES')" [class.active]="vistaActual === 'REPORTES'">
-        <span>📈</span> Reportes
+        Reportes
       </a>
 
     </nav>
 
     <div class="sidebar-bottom">
-      <a *ngIf="puedeVerNav('CONFIGURACION')" (click)="seleccionarVista('CONFIGURACION')" [class.active]="vistaActual === 'CONFIGURACION'"><span>⚙️</span> Configuración</a>
-      <a *ngIf="puedeVerNav('ROLES_PERMISOS')" (click)="seleccionarVista('ROLES_PERMISOS')" [class.active]="vistaActual === 'ROLES_PERMISOS'"><span>👥</span> Roles y permisos</a>
-      <a (click)="cerrarSesion()"><span>🚪</span> Cerrar sesión</a>
+      <a *ngIf="puedeVerNav('CONFIGURACION')" (click)="seleccionarVista('CONFIGURACION')" [class.active]="vistaActual === 'CONFIGURACION'">Configuración</a>
+      <a *ngIf="puedeVerNav('ROLES_PERMISOS')" (click)="seleccionarVista('ROLES_PERMISOS')" [class.active]="vistaActual === 'ROLES_PERMISOS'">Roles y permisos</a>
+      <a (click)="cerrarSesion()">Cerrar sesión</a>
     </div>
 
   </aside>
@@ -457,6 +457,10 @@
 
     <!-- Filtros: Reportes -->
     <section class="filters-card reportes-filters" *ngIf="vistaActual === 'REPORTES'">
+      <div class="reportes-filter-title">
+        <h2>Filtros del reporte</h2>
+        <p>Configure los criterios y genere una vista previa del PDF.</p>
+      </div>
       <input type="text" [(ngModel)]="filtroRepCliente" (ngModelChange)="onFiltrosCambiaron()" placeholder="Cliente (texto)..." name="repCliente" />
       <select [(ngModel)]="filtroRepVendedora" (ngModelChange)="onFiltrosCambiaron()" name="repVend">
         <option value="">Todas las vendedoras</option>
@@ -493,8 +497,11 @@
 
     <!-- Reportes: totales + vista previa PDF (sin tabla de pedidos) -->
     <section class="table-card reportes-panel" *ngIf="vistaActual === 'REPORTES'">
-      <div class="card-header">
-        <h2>Resultado del reporte</h2>
+      <div class="card-header reportes-header">
+        <div>
+          <h2>Resultado del reporte</h2>
+          <p>Resumen consolidado y vista previa del documento final.</p>
+        </div>
         <span>{{ reportResumen.pedidos }} registros</span>
       </div>
 
@@ -505,7 +512,7 @@
       </div>
 
       <div class="reporte-pdf-toolbar">
-        <button type="button" class="btn-primary" (click)="actualizarVistaPreviaReportePdf()" [disabled]="reportePdfGenerando">
+        <button type="button" class="btn-primary reporte-pdf-btn" (click)="actualizarVistaPreviaReportePdf()" [disabled]="reportePdfGenerando">
           {{ reportePdfGenerando ? 'Generando PDF…' : 'Actualizar vista previa PDF' }}
         </button>
         <span class="reporte-pdf-hint">El PDF usa los mismos filtros que los totales anteriores.</span>
@@ -545,7 +552,7 @@
 
       <div class="card-header">
         <h2>Listado de pedidos</h2>
-        <span>{{ pedidosVistaRows.length }} registros</span>
+        <span>Mostrando {{ pedidosVistaRows.length }} registros</span>
       </div>
 
 <div class="table-wrapper">
@@ -606,11 +613,11 @@
                 [disabled]="!auth.canChangeEstado()"
               >
 
-                <option value="CORTE">🔵 CORTE</option>
-                <option value="CANTEADO">🟢 CANTEADO</option>
-                <option value="ESPECIALES">🟣 ESPECIALES</option>
-                <option value="DESPACHO">🟠 DESPACHO</option>
-                <option value="ENTREGADO">✅ ENTREGADO</option>
+                <option value="CORTE">CORTE</option>
+                <option value="CANTEADO">CANTEADO</option>
+                <option value="ESPECIALES">ESPECIALES</option>
+                <option value="DESPACHO">DESPACHO</option>
+                <option value="ENTREGADO">ENTREGADO</option>
 
               </select>
 
@@ -739,21 +746,41 @@
             <!-- PAGOS -->
             <td *ngIf="columnKeys.has('pagos')">
 
-              <span
-                *ngIf="(p.saldoPendiente ?? 0) > 0"
-                class="deuda-badge"
-              >
-                DEBE S/ {{ p.saldoPendiente | number:'1.2-2' }}
-              </span>
+              <div class="pago-resumen" *ngIf="vistaActual === 'PAGOS'; else pagoEstadoSimpleTpl">
+                <div><span>Total</span><strong>S/ {{ (p.totalPedido || 0) | number:'1.2-2' }}</strong></div>
+                <div><span>Pagado</span><strong>S/ {{ (p.totalPagado || 0) | number:'1.2-2' }}</strong></div>
+                <span
+                  *ngIf="(p.saldoPendiente ?? 0) > 0"
+                  class="deuda-badge"
+                >
+                  DEBE S/ {{ p.saldoPendiente | number:'1.2-2' }}
+                </span>
 
-              <span
-                *ngIf="(p.saldoPendiente ?? 0) <= 0"
-                class="pagado-badge"
-              >
-                CANCELADO
-              </span>
+                <span
+                  *ngIf="(p.saldoPendiente ?? 0) <= 0"
+                  class="pagado-badge"
+                >
+                  CANCELADO
+                </span>
+              </div>
 
-              <div class="pagos-actions" *ngIf="auth.canRegistrarPago()">
+              <ng-template #pagoEstadoSimpleTpl>
+                <span
+                  *ngIf="(p.saldoPendiente ?? 0) > 0"
+                  class="deuda-badge"
+                >
+                  DEBE S/ {{ p.saldoPendiente | number:'1.2-2' }}
+                </span>
+
+                <span
+                  *ngIf="(p.saldoPendiente ?? 0) <= 0"
+                  class="pagado-badge"
+                >
+                  CANCELADO
+                </span>
+              </ng-template>
+
+              <div class="pagos-actions" *ngIf="vistaActual === 'PAGOS' && auth.canRegistrarPago()">
                 <button type="button" class="history-btn" (click)="abrirHistorialPagosPedido(p)">Historial pagos</button>
                 <button type="button" class="edit-btn" (click)="abrirModalRegistrarPago(p)">Registrar abono</button>
               </div>
@@ -761,7 +788,7 @@
             </td>
 
             <!-- ACCIONES -->
-            <td *ngIf="columnKeys.has('acciones')">
+            <td *ngIf="columnKeys.has('acciones')" class="acciones-column">
 
               <div class="acciones-group">
 
@@ -769,7 +796,7 @@
                   class="history-btn"
                   (click)="verAuditoria(p)"
                 >
-                  🕒 Historial
+                  Historial
                 </button>
 
                 <button
@@ -777,7 +804,7 @@
                   *ngIf="auth.canEditOrder()"
                   (click)="editarPedido(p)"
                 >
-                  ✏️ Editar
+                  Editar
                 </button>
 
                 <button
@@ -785,7 +812,7 @@
                   *ngIf="auth.canDeleteOrder()"
                   (click)="eliminarPedido(p)"
                 >
-                  🗑 Eliminar
+                  Eliminar
                 </button>
 
               </div>
@@ -814,6 +841,10 @@
       class="table-card"
       *ngIf="vistaActual === 'CLIENTES'"
     >
+      <div class="card-header">
+        <h2>Listado de clientes</h2>
+        <span>Mostrando {{ clientesFiltrados.length }} registros</span>
+      </div>
 
       <div class="filters-card">
 
@@ -858,14 +889,14 @@
                   class="edit-btn"
                   (click)="abrirEditarCliente(c)"
                 >
-                  ✏️ Editar
+                  Editar
                 </button>
 
                 <button
                   class="delete-btn"
                   (click)="eliminarCliente(c)"
                 >
-                  🗑 Eliminar
+                  Eliminar
                 </button>
 
               </div>
@@ -888,7 +919,7 @@
 
     <div class="modal-header">
       <h2>{{ modoEdicion ? 'Editar Pedido' : 'Nuevo Pedido' }}</h2>
-      <button class="close-btn" type="button" (click)="cerrarModal()">✕</button>
+      <button class="close-btn" type="button" (click)="cerrarModal()">Cerrar</button>
     </div>
 
     <form class="form-grid premium-form" (ngSubmit)="guardarPedido()">
@@ -964,7 +995,7 @@
         <div class="detalle-card" *ngFor="let d of nuevoPedido.detalles; let i = index; trackBy: trackByIndex">
           <div class="detalle-top">
             <h4>Material {{ i + 1 }}</h4>
-            <button type="button" class="delete-btn" (click)="eliminarDetalle(i)">🗑 Eliminar</button>
+            <button type="button" class="delete-btn" (click)="eliminarDetalle(i)">Eliminar</button>
           </div>
 
           <div class="form-row">
@@ -1040,7 +1071,7 @@
             <div class="especial-row" *ngFor="let e of d.especiales; let j = index; trackBy: trackByIndex">
               <input type="number" min="1" step="1" placeholder="Cantidad" [(ngModel)]="e.cantidad" name="especialCantidad{{ i }}_{{ j }}" (input)="normalizarEspecial(e)">
               <input type="text" placeholder="Descripción del especial" [(ngModel)]="e.descripcion" name="especialDescripcion{{ i }}_{{ j }}">
-              <button type="button" class="delete-btn" (click)="eliminarEspecial(d, j)">🗑</button>
+              <button type="button" class="delete-btn" (click)="eliminarEspecial(d, j)">Eliminar</button>
             </div>
           </div>
         </div>
@@ -1082,7 +1113,7 @@
         <p>Orden: {{ pedidoAuditoria?.numeroOrden }} — {{ pedidoAuditoria?.cliente?.nombre }}</p>
       </div>
 
-      <button class="close-btn" (click)="cerrarAuditoria()">✕</button>
+      <button class="close-btn" (click)="cerrarAuditoria()">Cerrar</button>
     </div>
 
     <div class="audit-list" *ngIf="auditoriaSeleccionada.length > 0">
@@ -1116,7 +1147,7 @@
         <h2>Registrar abono</h2>
         <p *ngIf="pedidoPagoSeleccion">Pedido {{ pedidoPagoSeleccion.numeroOrden }} — {{ pedidoPagoSeleccion.cliente?.nombre }}</p>
       </div>
-      <button type="button" class="close-btn" (click)="cerrarModalPago()">✕</button>
+      <button type="button" class="close-btn" (click)="cerrarModalPago()">Cerrar</button>
     </div>
     <form class="premium-form" (ngSubmit)="guardarRegistroPago()">
       <div class="form-section">
@@ -1169,11 +1200,11 @@
         <h2>Auditoría de pagos</h2>
         <p *ngIf="pedidoPagoSeleccion">Pedido {{ pedidoPagoSeleccion.numeroOrden }} — {{ pedidoPagoSeleccion.cliente?.nombre }}</p>
       </div>
-      <button type="button" class="close-btn" (click)="cerrarHistorialPagos()">✕</button>
+      <button type="button" class="close-btn" (click)="cerrarHistorialPagos()">Cerrar</button>
     </div>
     <div class="audit-list" *ngIf="historialPagos.length > 0">
       <div class="audit-item" *ngFor="let h of historialPagos; trackBy: trackByPagoHistorial">
-        <div class="audit-icon">💳</div>
+        <div class="audit-icon">Pago</div>
         <div>
           <strong>{{ h.metodoPago }} — {{ h.monto | number:'1.2-2' }}</strong>
           <p *ngIf="h.codigoPago" class="audit-codigo">Cód. operación: {{ h.codigoPago }}</p>
@@ -1192,7 +1223,7 @@
   <div class="modal small-modal">
     <div class="modal-header">
       <h2>{{ modoEdicionUsuario ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
-      <button type="button" class="close-btn" (click)="cerrarModalUsuario()">✕</button>
+      <button type="button" class="close-btn" (click)="cerrarModalUsuario()">Cerrar</button>
     </div>
     <form class="premium-form" (ngSubmit)="guardarUsuarioAdminForm()">
       <div class="form-section">
@@ -1242,7 +1273,7 @@
         type="button"
         (click)="cerrarModalCliente()"
       >
-        ✕
+        Cerrar
       </button>
     </div>
 
@@ -1261,6 +1292,7 @@
             <select
               [(ngModel)]="nuevoCliente.tipoDocumento"
               name="tipoDocumento"
+              (ngModelChange)="onTipoDocumentoClienteChange()"
             >
               <option value="DNI">DNI</option>
               <option value="RUC">RUC</option>
@@ -1276,9 +1308,11 @@
               maxlength="11"
               inputmode="numeric"
               [ngModel]="nuevoCliente.numeroDocumento"
-              (ngModelChange)="nuevoCliente.numeroDocumento = limpiarSoloNumeros($event, 11)"
+              (ngModelChange)="onDocumentoClienteChange($event)"
               name="numeroDocumento"
+              [class.input-invalid]="clienteDocumentoError"
             >
+            <small class="field-error" *ngIf="clienteDocumentoError">{{ clienteDocumentoError }}</small>
           </div>
 
         </div>
