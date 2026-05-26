@@ -1144,21 +1144,6 @@ td:last-child {
   box-shadow: 0 0 0 2px #2563eb22;
 }
 
-.vendedora-select {
-  border: none;
-  background: #f8fafc;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  min-width: 130px;
-}
-
-.vendedora-select:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px #2563eb22;
-}
-
 th.col-numero,
 td.col-numero {
   width: 90px;
@@ -2156,12 +2141,6 @@ table.roles-matrix {
   font-size: 12px;
 }
 
-.table-card .vendedora-select {
-  padding: 5px 10px;
-  font-size: 12px;
-  min-width: 110px;
-}
-
 .table-card .history-btn,
 .table-card .edit-btn,
 .table-card .delete-btn {
@@ -2530,8 +2509,7 @@ table.roles-matrix {
   background: #eef2f7;
 }
 
-.estado-select,
-.vendedora-select {
+.estado-select {
   border: 1px solid #dbe4ef;
   background: #ffffff;
   color: #0f172a;
@@ -2541,8 +2519,7 @@ table.roles-matrix {
   font-weight: 900;
 }
 
-.estado-select:focus,
-.vendedora-select:focus {
+.estado-select:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 

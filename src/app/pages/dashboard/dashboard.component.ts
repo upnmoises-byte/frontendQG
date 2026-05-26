@@ -130,6 +130,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   totalVendedoras = 0;
   totalEspeciales = 0;
   totalEspecialesOperativos = 0;
+  ranurasPendientesEspeciales = 0;
+  perforacionesPendientesEspeciales = 0;
+  chaflanesPendientesEspeciales = 0;
+  curvasPendientesEspeciales = 0;
   cantoDelgadoTotal = 0;
   cantoGruesoTotal = 0;
   cantoDelgado36mmTotal = 0;
@@ -1886,11 +1890,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pedidosVencidos = pedidosUnicos.filter((p) => this.esPedidoVencidoPedido(p)).length;
     this.promedioDiasEntrega = this.calcularPromedioDiasEntrega();
 
-    const detallesPendientes = detalles.filter((d) => d.estado !== 'ENTREGADO');
-    this.planchasPendientesEscuadradora = detallesPendientes
+    const detallesCorte = detalles.filter((d) => d.estado === 'CORTE');
+    this.planchasPendientesEscuadradora = detallesCorte
       .filter((d) => d.maquina === 'ESCUADRADORA')
       .reduce((t, d) => t + d.cantidad, 0);
-    this.planchasPendientesSeccionadora = detallesPendientes
+    this.planchasPendientesSeccionadora = detallesCorte
       .filter((d) => d.maquina === 'SECCIONADORA')
       .reduce((t, d) => t + d.cantidad, 0);
     this.totalEscuadradora = this.planchasPendientesEscuadradora;
@@ -1902,9 +1906,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cantoDelgado36mmTotal = detallesCanteado.reduce((t, d) => t + d.cantoDelgado36mm, 0);
     this.cantoGrueso36mmTotal = detallesCanteado.reduce((t, d) => t + d.cantoGrueso36mm, 0);
 
-    this.totalEspecialesOperativos = detalles
-      .filter((d) => d.estado !== 'ENTREGADO')
-      .reduce((t, d) => t + d.ranuras + d.perforaciones + d.especiales, 0);
+    const detallesEspeciales = detalles.filter((d) => d.estado === 'ESPECIALES');
+    this.ranurasPendientesEspeciales = detallesEspeciales.reduce((t, d) => t + d.ranuras, 0);
+    this.perforacionesPendientesEspeciales = detallesEspeciales.reduce((t, d) => t + d.perforaciones, 0);
+    this.chaflanesPendientesEspeciales = detallesEspeciales.reduce((t, d) => t + d.chaflanes, 0);
+    this.curvasPendientesEspeciales = detallesEspeciales.reduce((t, d) => t + d.curvas, 0);
+    this.totalEspecialesOperativos = detallesEspeciales
+      .reduce((t, d) => t + d.ranuras + d.perforaciones + d.chaflanes + d.curvas + d.otrosEspeciales, 0);
 
     this.totalDiana = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'DIANA').length;
     this.totalAnabel = pedidosUnicos.filter((p) => this.vendedoraPedido(p) === 'ANABEL').length;
@@ -1974,7 +1982,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     cantoGrueso36mm: number;
     ranuras: number;
     perforaciones: number;
-    especiales: number;
+    chaflanes: number;
+    curvas: number;
+    otrosEspeciales: number;
   }> {
     return pedidos.flatMap((p) => {
       if (p.detalles?.length) {
@@ -1988,7 +1998,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
           cantoGrueso36mm: Number(d.cantoGrueso36mm || 0),
           ranuras: Number(d.ranuras || 0),
           perforaciones: Number(d.perforaciones || 0),
-          especiales: (d.especiales || []).reduce((t, e) => t + Number(e.cantidad || 0), 0)
+          chaflanes: this.totalEspecialesPorDescripcion(d.especiales || [], 'CHAFLAN'),
+          curvas: this.totalEspecialesPorDescripcion(d.especiales || [], 'CURVA'),
+          otrosEspeciales: this.totalOtrosEspeciales(d.especiales || [])
         }));
       }
       return [{
@@ -2001,9 +2013,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
         cantoGrueso36mm: Number(p.cantoGrueso36mm || 0),
         ranuras: Number(p.ranuras || 0),
         perforaciones: Number(p.perforaciones || 0),
-        especiales: Number(p.cantidadEspeciales || 0)
+        chaflanes: 0,
+        curvas: 0,
+        otrosEspeciales: Number(p.cantidadEspeciales || 0)
       }];
     });
+  }
+
+  private totalEspecialesPorDescripcion(especiales: { cantidad?: number; descripcion?: string }[], texto: string): number {
+    const filtro = texto.toUpperCase();
+    return especiales
+      .filter((e) => String(e.descripcion || '').toUpperCase().includes(filtro))
+      .reduce((t, e) => t + Number(e.cantidad || 0), 0);
+  }
+
+  private totalOtrosEspeciales(especiales: { cantidad?: number; descripcion?: string }[]): number {
+    return especiales
+      .filter((e) => {
+        const desc = String(e.descripcion || '').toUpperCase();
+        return !desc.includes('CHAFLAN') && !desc.includes('CURVA');
+      })
+      .reduce((t, e) => t + Number(e.cantidad || 0), 0);
   }
 
   esPedidoVencido(row: PedidoVistaDetalle): boolean {
@@ -2335,28 +2365,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
   }
-
-  cambiarVendedora(row: PedidoVistaDetalle, nueva: string) {
-    const pedido = row.pedidoOriginal;
-    row.vendedora = nueva;
-    const actualizado = JSON.parse(JSON.stringify(pedido)) as Pedido;
-    actualizado.vendedora = nueva;
-
-    this.pedidoService.actualizar(
-      pedido.id!,
-      actualizado,
-      this.usuarioParaAuditoria()
-    ).subscribe({
-      next: () => {
-        this.notify.success('Vendedora actualizada correctamente');
-      },
-      error: (err: any) => {
-        console.error(err);
-      }
-    });
-
-  }
-
 
   obtenerSaldo(pedido: Pedido): number {
     return Math.max(Number(pedido.total || 0) - Number(pedido.adelanto || 0), 0);

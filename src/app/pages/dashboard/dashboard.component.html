@@ -232,15 +232,15 @@
             </div>
 
             <div class="premium-card">
-              <h2>Producción por máquina</h2>
+              <h2>Planchas pendientes en corte</h2>
 
               <div class="metric-row highlight">
-                <span>Planchas Escuadradora</span>
+                <span>Escuadradora</span>
                 <strong>{{ planchasPendientesEscuadradora }}</strong>
               </div>
 
               <div class="metric-row highlight">
-                <span>Planchas Seccionadora</span>
+                <span>Seccionadora</span>
                 <strong>{{ planchasPendientesSeccionadora }}</strong>
               </div>
             </div>
@@ -259,6 +259,10 @@
                 <span>Total especiales</span>
                 <strong>{{ totalEspecialesOperativos }}</strong>
               </div>
+              <div class="metric-row"><span>Ranuras pendientes</span><strong>{{ ranurasPendientesEspeciales }}</strong></div>
+              <div class="metric-row"><span>Perforaciones pendientes</span><strong>{{ perforacionesPendientesEspeciales }}</strong></div>
+              <div class="metric-row"><span>Chaflanes pendientes</span><strong>{{ chaflanesPendientesEspeciales }}</strong></div>
+              <div class="metric-row"><span>Curvas pendientes</span><strong>{{ curvasPendientesEspeciales }}</strong></div>
             </div>
 
             <div class="premium-card">
@@ -701,18 +705,7 @@
 
             <!-- VENDEDORA -->
             <td *ngIf="columnKeys.has('vendedora')">
-
-              <select
-                class="vendedora-select"
-                [ngModel]="p.vendedora"
-                (ngModelChange)="cambiarVendedora(p, $event)"
-                [disabled]="tieneVendedoraFijadaPorRol()"
-              >
-
-                <option *ngFor="let ov of opcionesVendedoraSelect(); trackBy: trackByVendedoraOpt" [value]="ov.value">{{ ov.label }}</option>
-
-              </select>
-
+              {{ p.vendedora || '-' }}
             </td>
 
             <!-- CORTES -->
