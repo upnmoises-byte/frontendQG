@@ -10,6 +10,7 @@ export type NavId =
   | 'DESPACHO'
   | 'ENTREGADO'
   | 'REPORTES'
+  | 'CATALOGOS'
   | 'CONFIGURACION'
   | 'ROLES_PERMISOS';
 
@@ -24,6 +25,7 @@ export const ALL_NAV_IDS: NavId[] = [
   'DESPACHO',
   'ENTREGADO',
   'REPORTES',
+  'CATALOGOS',
   'CONFIGURACION',
   'ROLES_PERMISOS'
 ];
@@ -54,6 +56,7 @@ export function navLabel(nav: NavId): string {
     DESPACHO: 'Despacho',
     ENTREGADO: 'Entregados',
     REPORTES: 'Reportes',
+    CATALOGOS: 'Materiales y especiales',
     CONFIGURACION: 'Configuración',
     ROLES_PERMISOS: 'Roles y permisos'
   };

@@ -2,10 +2,21 @@
   box-sizing: border-box;
 }
 
+:root {
+  --qg-blue-dark: #0c1f3d;
+  --qg-blue-mid: #1e3a5f;
+  --qg-yellow: #facc15;
+  --qg-gray-bg: #f4f7fb;
+  --qg-font: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 html,
 body {
   min-height: 100%;
   margin: 0;
+  font-family: var(--qg-font);
+  color: #0f172a;
+  background: var(--qg-gray-bg);
   overflow-x: hidden;
   overflow-y: auto;
 }

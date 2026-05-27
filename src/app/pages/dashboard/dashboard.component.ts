@@ -16,6 +16,11 @@ import { NotificationService } from '../../services/notification.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReporteService, ReportePedidosPdfParams } from '../../services/reporte.service';
 import { FactilizaDocumentoResponse, FactilizaService } from '../../services/factiliza.service';
+import { MaterialService } from '../../services/material.service';
+import { CatalogoEspecialService } from '../../services/catalogo-especial.service';
+import { Material } from '../../models/material.model';
+import { CatalogoEspecial } from '../../models/catalogo-especial.model';
+import { CatalogosPanelComponent } from '../catalogos/catalogos-panel.component';
 
 const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
   PEDIDOS: [
@@ -59,7 +64,7 @@ const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CatalogosPanelComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -175,6 +180,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   nuevoPedido!: Pedido;
 
+  /** Navegación lateral en móvil */
+  sidebarMobileAbierto = false;
+  viewportMovil = false;
+  private readonly onWindowResize = () => this.actualizarViewport();
+
+  materialesActivos: Material[] = [];
+  catalogoEspecialesActivos: CatalogoEspecial[] = [];
+  materialBusqueda: string[] = [];
+  materialDropdownIndex: number | null = null;
+
   /** Matriz editable en «Roles y permisos» (solo admin). */
   rolesMatrix: Record<string, NavId[]> = {};
 
@@ -231,7 +246,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private notify: NotificationService,
     private sanitizer: DomSanitizer,
     private reporte: ReporteService,
-    private factiliza: FactilizaService
+    private factiliza: FactilizaService,
+    private materialService: MaterialService,
+    private catalogoEspecialService: CatalogoEspecialService
   ) {
     this.nuevoPedido = this.pedidoVacio();
   }
@@ -241,6 +258,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.asegurarVistaPermitida();
     this.cargarPedidos();
     this.cargarClientes();
+    this.actualizarViewport();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.onWindowResize);
+    }
   }
 
   /** Indica si el rol fija una sola vendedora (ventas 1–4). */
@@ -549,6 +570,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
       clearTimeout(this.pdfRefreshTimer);
     }
     this.revocarVistaPreviaPdf();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.onWindowResize);
+    }
+  }
+
+  actualizarViewport(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const movil = window.innerWidth <= 900;
+    if (this.viewportMovil !== movil) {
+      this.viewportMovil = movil;
+      if (!movil) {
+        this.sidebarMobileAbierto = false;
+      }
+    }
+    this.cdr.markForCheck();
+  }
+
+  toggleSidebarMobile(): void {
+    this.sidebarMobileAbierto = !this.sidebarMobileAbierto;
+    this.cdr.markForCheck();
+  }
+
+  cerrarSidebarMobile(): void {
+    if (this.sidebarMobileAbierto) {
+      this.sidebarMobileAbierto = false;
+      this.cdr.markForCheck();
+    }
   }
 
   rebuildVista(): void {
@@ -886,6 +936,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       this.nuevoPedido.detalles.push(this.nuevoDetalle());
+      this.materialBusqueda.push('');
     }
 
     abrirModalClienteDesdePedido() {
@@ -906,6 +957,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     eliminarDetalle(index: number) {
       this.nuevoPedido.detalles?.splice(index, 1);
+      this.materialBusqueda.splice(index, 1);
     }
 
     agregarEspecial(detalle: any) {
@@ -968,6 +1020,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     this.rebuildVista();
+    if (this.viewportMovil) {
+      this.cerrarSidebarMobile();
+    }
   }
 
   private asegurarVistaPermitida(): void {
@@ -1404,6 +1459,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (vendedora) {
         this.nuevoPedido.vendedora = vendedora;
       }
+      this.cargarCatalogosActivos();
+      this.sincronizarBusquedaMateriales();
       this.cargarSiguienteNumeroOrden();
     }
 
@@ -1432,6 +1489,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.modoEdicion = true;
           this.mostrarModal = true;
           this.nuevoPedido = JSON.parse(JSON.stringify(original));
+          this.cargarCatalogosActivos();
+          this.sincronizarBusquedaMateriales();
           this.validarFechaHoraEntrega();
         }
       );
@@ -1571,7 +1630,74 @@ export class DashboardComponent implements OnInit, OnDestroy {
     detalle.material = this.normalizarMayusculas(valor);
   }
 
+  cargarCatalogosActivos(): void {
+    this.materialService.listar(true).subscribe({
+      next: (lista) => {
+        this.materialesActivos = lista || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.materialesActivos = [];
+        this.cdr.markForCheck();
+      }
+    });
+    this.catalogoEspecialService.listar(true).subscribe({
+      next: (lista) => {
+        this.catalogoEspecialesActivos = lista || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.catalogoEspecialesActivos = [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  sincronizarBusquedaMateriales(): void {
+    this.materialBusqueda = (this.nuevoPedido.detalles || []).map((d) =>
+      String(d.material || '')
+    );
+    this.materialDropdownIndex = null;
+    this.cdr.markForCheck();
+  }
+
+  materialesSugeridos(index: number): Material[] {
+    const q = (this.materialBusqueda[index] || '').trim().toUpperCase();
+    if (!q) {
+      return this.materialesActivos.slice(0, 25);
+    }
+    return this.materialesActivos
+      .filter((m) => m.nombre.toUpperCase().includes(q))
+      .slice(0, 25);
+  }
+
+  onMaterialBusquedaChange(index: number, detalle: PedidoDetalle, valor: unknown): void {
+    const texto = this.normalizarMayusculas(valor);
+    this.materialBusqueda[index] = texto;
+    detalle.material = texto;
+    this.materialDropdownIndex = index;
+    this.cdr.markForCheck();
+  }
+
+  seleccionarMaterialCatalogo(detalle: PedidoDetalle, material: Material, index: number): void {
+    detalle.material = material.nombre;
+    this.materialBusqueda[index] = material.nombre;
+    this.materialDropdownIndex = null;
+    this.cdr.markForCheck();
+  }
+
+  cerrarMaterialDropdown(): void {
+    setTimeout(() => {
+      this.materialDropdownIndex = null;
+      this.cdr.markForCheck();
+    }, 180);
+  }
+
   onEspecialDescripcionChange(especial: any, valor: unknown): void {
+    especial.descripcion = this.normalizarMayusculas(valor);
+  }
+
+  onEspecialCatalogoChange(especial: any, valor: unknown): void {
     especial.descripcion = this.normalizarMayusculas(valor);
   }
 

@@ -1,4 +1,21 @@
-<div class="dashboard">
+<div class="dashboard" [class.mobile-nav-open]="sidebarMobileAbierto && viewportMovil">
+
+  <button
+    type="button"
+    class="mobile-menu-btn"
+    *ngIf="viewportMovil"
+    (click)="toggleSidebarMobile()"
+    aria-label="Abrir menú de navegación"
+  >
+    Menú
+  </button>
+
+  <div
+    class="sidebar-backdrop"
+    *ngIf="viewportMovil && sidebarMobileAbierto"
+    (click)="cerrarSidebarMobile()"
+    aria-hidden="true"
+  ></div>
 
   <aside class="sidebar">
 
@@ -74,6 +91,10 @@
         Reportes
       </a>
 
+      <a *ngIf="puedeVerNav('CATALOGOS')" (click)="seleccionarVista('CATALOGOS')" [class.active]="vistaActual === 'CATALOGOS'">
+        Materiales y especiales
+      </a>
+
     </nav>
 
     <div class="sidebar-bottom">
@@ -100,12 +121,14 @@
             vistaActual === 'ENTREGADO' ? 'Entregados' :
             vistaActual === 'PAGOS' ? 'Control de Pagos' :
             vistaActual === 'REPORTES' ? 'Reportes' :
+            vistaActual === 'CATALOGOS' ? 'Materiales y especiales' :
             vistaActual === 'CONFIGURACION' ? 'Configuración' :
             vistaActual === 'ROLES_PERMISOS' ? 'Roles y permisos' :
             vistaActual
           }}
         </h1>
-        <p *ngIf="vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'">Control empresarial de producción, prioridades y estados.</p>
+        <p *ngIf="vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES' && vistaActual !== 'CATALOGOS'">Control empresarial de producción, prioridades y estados.</p>
+        <p *ngIf="vistaActual === 'CATALOGOS'">Administre el catálogo de materiales de melamina y los tipos de especiales de producción.</p>
         <p *ngIf="vistaActual === 'REPORTES'">Filtre pedidos por cliente, vendedora, estados de proceso, máquinas, fechas y situación de pago. Los totales se calculan sobre el resultado.</p>
         <p *ngIf="vistaActual === 'CONFIGURACION'">Datos de empresa, moneda y preferencias generales.</p>
         <p *ngIf="vistaActual === 'ROLES_PERMISOS'">Usuarios, roles del sistema y matriz de vistas del menú (permisos en este navegador).</p>
@@ -113,7 +136,7 @@
 
       <button
         class="btn-primary"
-        *ngIf="auth.canCreateOrder() && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'"
+        *ngIf="auth.canCreateOrder() && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES' && vistaActual !== 'CATALOGOS'"
         (click)="abrirModal()"
       >
         + Nuevo Pedido
@@ -880,6 +903,8 @@
 
     </section>
 
+    <app-catalogos-panel *ngIf="vistaActual === 'CATALOGOS'"></app-catalogos-panel>
+
     <!-- CLIENTES -->
     <section
       class="table-card"
@@ -1061,14 +1086,26 @@
               <input type="number" min="1" step="1" [(ngModel)]="d.cantidad" name="cantidadDetalle{{ i }}" (input)="normalizarDetalle(d)">
             </div>
 
-            <div class="field">
+            <div class="field material-autocomplete">
               <label>Material / Color</label>
               <input
                 type="text"
-                [ngModel]="d.material"
-                (ngModelChange)="onMaterialChange(d, $event)"
+                [ngModel]="materialBusqueda[i]"
+                (ngModelChange)="onMaterialBusquedaChange(i, d, $event)"
+                (focus)="materialDropdownIndex = i"
+                (blur)="cerrarMaterialDropdown()"
                 name="materialDetalle{{ i }}"
+                placeholder="Buscar en catálogo..."
+                autocomplete="off"
               >
+              <ul class="autocomplete-list" *ngIf="materialDropdownIndex === i && materialesSugeridos(i).length">
+                <li
+                  *ngFor="let m of materialesSugeridos(i)"
+                  (mousedown)="seleccionarMaterialCatalogo(d, m, i)"
+                >
+                  {{ m.nombre }}
+                </li>
+              </ul>
             </div>
 
             <div class="field">
@@ -1132,13 +1169,14 @@
 
             <div class="especial-row" *ngFor="let e of d.especiales; let j = index; trackBy: trackByIndex">
               <input type="number" min="1" step="1" placeholder="Cantidad" [(ngModel)]="e.cantidad" name="especialCantidad{{ i }}_{{ j }}" (input)="normalizarEspecial(e)">
-              <input
-                type="text"
-                placeholder="Descripción del especial"
-                [ngModel]="e.descripcion"
-                (ngModelChange)="onEspecialDescripcionChange(e, $event)"
-                name="especialDescripcion{{ i }}_{{ j }}"
+              <select
+                [(ngModel)]="e.descripcion"
+                (ngModelChange)="onEspecialCatalogoChange(e, $event)"
+                name="especialCatalogo{{ i }}_{{ j }}"
               >
+                <option value="">Seleccione especial</option>
+                <option *ngFor="let sp of catalogoEspecialesActivos" [value]="sp.nombre">{{ sp.nombre }}</option>
+              </select>
               <button type="button" class="delete-btn" (click)="eliminarEspecial(d, j)">Eliminar</button>
             </div>
           </div>

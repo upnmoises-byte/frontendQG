@@ -1,0 +1,186 @@
+<section class="catalogos-panel">
+  <div class="catalogos-tabs">
+    <button type="button" [class.active]="pestana === 'MATERIALES'" (click)="cambiarPestana('MATERIALES')">Materiales</button>
+    <button type="button" [class.active]="pestana === 'ESPECIALES'" (click)="cambiarPestana('ESPECIALES')">Especiales</button>
+  </div>
+
+  <div class="table-card" *ngIf="pestana === 'MATERIALES'">
+    <div class="card-header">
+      <h2>Catálogo de materiales</h2>
+      <span>{{ materialesFiltrados.length }} registros</span>
+      <button type="button" class="primary-btn" *ngIf="esAdmin()" (click)="abrirNuevoMaterial()">+ Nuevo material</button>
+    </div>
+
+    <div class="filters-card catalogos-filters">
+      <input type="text" placeholder="Buscar material..." [(ngModel)]="busquedaMaterial" (input)="filtrarMateriales()">
+      <select [(ngModel)]="filtroMarca" (change)="filtrarMateriales()">
+        <option value="">Todas las marcas</option>
+        <option value="PELIKANO">PELIKANO</option>
+        <option value="HISPANOS">HISPANOS</option>
+      </select>
+      <select [(ngModel)]="filtroTipo" (change)="filtrarMateriales()">
+        <option value="">Todos los tipos</option>
+        <option value="NORMAL">NORMAL</option>
+        <option value="RH">RH</option>
+      </select>
+      <select [(ngModel)]="filtroActivoMaterial" (change)="filtrarMateriales()">
+        <option value="">Activos e inactivos</option>
+        <option value="ACTIVO">Solo activos</option>
+        <option value="INACTIVO">Solo inactivos</option>
+      </select>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="catalogos-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Marca</th>
+            <th>Color</th>
+            <th>Tipo</th>
+            <th>Espesor</th>
+            <th>Medida</th>
+            <th>Estado</th>
+            <th *ngIf="esAdmin()">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of materialesFiltrados">
+            <td>{{ m.nombre }}</td>
+            <td>{{ m.marca || '-' }}</td>
+            <td>{{ m.color || '-' }}</td>
+            <td>{{ m.tipo || '-' }}</td>
+            <td>{{ m.espesor || '-' }}</td>
+            <td>{{ m.medida || '-' }}</td>
+            <td>
+              <span class="estado-badge" [class.inactivo]="!m.activo">{{ m.activo ? 'Activo' : 'Inactivo' }}</span>
+            </td>
+            <td *ngIf="esAdmin()">
+              <div class="actions">
+                <button type="button" class="edit-btn" (click)="abrirEditarMaterial(m)">Editar</button>
+                <button type="button" class="warn-btn" (click)="toggleMaterial(m)">{{ m.activo ? 'Desactivar' : 'Activar' }}</button>
+                <button type="button" class="delete-btn" (click)="eliminarMaterial(m)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="table-card" *ngIf="pestana === 'ESPECIALES'">
+    <div class="card-header">
+      <h2>Catálogo de especiales</h2>
+      <span>{{ especialesFiltrados.length }} registros</span>
+      <button type="button" class="primary-btn" *ngIf="esAdmin()" (click)="abrirNuevoEspecial()">+ Nuevo especial</button>
+    </div>
+
+    <div class="filters-card catalogos-filters">
+      <input type="text" placeholder="Buscar especial..." [(ngModel)]="busquedaEspecial" (input)="filtrarEspeciales()">
+      <select [(ngModel)]="filtroActivoEspecial" (change)="filtrarEspeciales()">
+        <option value="">Activos e inactivos</option>
+        <option value="ACTIVO">Solo activos</option>
+        <option value="INACTIVO">Solo inactivos</option>
+      </select>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="catalogos-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            <th *ngIf="esAdmin()">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of especialesFiltrados">
+            <td>{{ e.nombre }}</td>
+            <td>{{ e.descripcion || '-' }}</td>
+            <td>
+              <span class="estado-badge" [class.inactivo]="!e.activo">{{ e.activo ? 'Activo' : 'Inactivo' }}</span>
+            </td>
+            <td *ngIf="esAdmin()">
+              <div class="actions">
+                <button type="button" class="edit-btn" (click)="abrirEditarEspecial(e)">Editar</button>
+                <button type="button" class="warn-btn" (click)="toggleEspecial(e)">{{ e.activo ? 'Desactivar' : 'Activar' }}</button>
+                <button type="button" class="delete-btn" (click)="eliminarEspecial(e)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarModalMaterial">
+  <div class="modal catalogo-modal">
+    <div class="modal-header">
+      <h2>{{ modoEdicion ? 'Editar material' : 'Nuevo material' }}</h2>
+      <button type="button" class="close-btn" (click)="cerrarModalMaterial()">Cerrar</button>
+    </div>
+    <form class="form-grid premium-form" (ngSubmit)="guardarMaterial()">
+      <div class="field">
+        <label>Nombre <span>*</span></label>
+        <input type="text" [(ngModel)]="materialForm.nombre" name="matNombre" required>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Marca</label>
+          <select [(ngModel)]="materialForm.marca" name="matMarca">
+            <option value="PELIKANO">PELIKANO</option>
+            <option value="HISPANOS">HISPANOS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select [(ngModel)]="materialForm.tipo" name="matTipo">
+            <option value="NORMAL">NORMAL</option>
+            <option value="RH">RH</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Color</label>
+          <input type="text" [(ngModel)]="materialForm.color" name="matColor">
+        </div>
+        <div class="field">
+          <label>Espesor</label>
+          <input type="text" [(ngModel)]="materialForm.espesor" name="matEspesor">
+        </div>
+        <div class="field">
+          <label>Medida</label>
+          <input type="text" [(ngModel)]="materialForm.medida" name="matMedida">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="primary-btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="mostrarModalEspecial">
+  <div class="modal catalogo-modal">
+    <div class="modal-header">
+      <h2>{{ modoEdicion ? 'Editar especial' : 'Nuevo especial' }}</h2>
+      <button type="button" class="close-btn" (click)="cerrarModalEspecial()">Cerrar</button>
+    </div>
+    <form class="form-grid premium-form" (ngSubmit)="guardarEspecial()">
+      <div class="field">
+        <label>Nombre <span>*</span></label>
+        <input type="text" [(ngModel)]="especialForm.nombre" name="espNombre" required>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea [(ngModel)]="especialForm.descripcion" name="espDescripcion" rows="3"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="primary-btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>

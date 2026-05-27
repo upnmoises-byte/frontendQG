@@ -5,7 +5,7 @@ import { ALL_NAV_IDS, APP_ROLES, NavId } from '../config/nav-permissions';
 const STORAGE_KEY = 'qg_nav_permissions_matrix';
 
 /** Vistas nuevas: se añaden a permisos ya guardados si el rol las lleva por defecto (migración suave). */
-const NAV_IDS_AÑADIR_SI_FALTAN: NavId[] = ['REPORTES'];
+const NAV_IDS_AÑADIR_SI_FALTAN: NavId[] = ['REPORTES', 'CATALOGOS'];
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +27,7 @@ export class PermissionsService {
     }
 
     if (r === 'CAJA') {
-      return sin('CONFIGURACION', 'ROLES_PERMISOS');
+      return sin('CONFIGURACION', 'ROLES_PERMISOS', 'CATALOGOS');
     }
 
     if (
