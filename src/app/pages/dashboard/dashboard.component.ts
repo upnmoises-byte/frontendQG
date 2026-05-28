@@ -1497,7 +1497,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
   private cargarSiguienteNumeroOrden(): void {
-    this.pedidoService.siguienteNumeroOrden('27000').subscribe({
+    this.pedidoService.siguienteNumeroOrden().subscribe({
       next: (res) => {
         if (!this.modoEdicion) {
           this.nuevoPedido.numeroOrden = res.numeroOrden;
@@ -2000,15 +2000,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.pedidoService.crear(this.nuevoPedido).subscribe({
-      next: () => {
-        this.notify.success('Pedido creado correctamente.');
-        this.cerrarModal();
-        this.cargarPedidos();
+    this.pedidoService.siguienteNumeroOrden().subscribe({
+      next: (res) => {
+        const correlativoActual = String(res?.numeroOrden || '').trim();
+        if (!correlativoActual) {
+          this.notify.error('No se pudo validar el correlativo del pedido.');
+          return;
+        }
+        const numeroActual = String(this.nuevoPedido.numeroOrden || '').trim();
+        if (numeroActual !== correlativoActual) {
+          this.nuevoPedido.numeroOrden = correlativoActual;
+          this.notify.warning(`Se actualizó el N° de orden al correlativo vigente: ${correlativoActual}.`);
+        }
+
+        this.pedidoService.crear(this.nuevoPedido).subscribe({
+          next: () => {
+            this.notify.success('Pedido creado correctamente.');
+            this.cerrarModal();
+            this.cargarPedidos();
+          },
+          error: (err: any) => {
+            console.error(err);
+            this.notify.error(this.mensajeHttp(err, 'Error al registrar pedido'));
+            if (err?.status === 409) {
+              this.cargarSiguienteNumeroOrden();
+            }
+          }
+        });
       },
       error: (err: any) => {
         console.error(err);
-        this.notify.error(this.mensajeHttp(err, 'Error al registrar pedido'));
+        this.notify.error(this.mensajeHttp(err, 'No se pudo validar el correlativo del pedido'));
       }
     });
   }

@@ -45,10 +45,8 @@ export class PedidoService {
     );
   }
 
-  siguienteNumeroOrden(serie = '27000') {
-    return this.http.get<{ numeroOrden: string }>(`${this.API}/siguiente-numero`, {
-      params: { serie }
-    });
+  siguienteNumeroOrden() {
+    return this.http.get<{ numeroOrden: string }>(`${this.API}/siguiente-numero`);
   }
 
   crear(pedido: Pedido) {
