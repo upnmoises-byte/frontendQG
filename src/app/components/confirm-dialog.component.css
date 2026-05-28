@@ -1,0 +1,67 @@
+.qg-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(4px);
+  animation: qg-fade-in 0.2s ease;
+}
+
+.qg-dialog {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  border: 1px solid #e2e8f0;
+  animation: qg-slide-up 0.24s ease;
+}
+
+.qg-dialog-header {
+  padding: 20px 22px 0;
+}
+
+.qg-dialog-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.qg-dialog-body {
+  margin: 0;
+  padding: 14px 22px 20px;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.qg-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.qg-dialog-danger .qg-dialog-header h3 {
+  color: #b91c1c;
+}
+
+@keyframes qg-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qg-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

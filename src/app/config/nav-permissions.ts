@@ -10,7 +10,7 @@ export type NavId =
   | 'DESPACHO'
   | 'ENTREGADO'
   | 'REPORTES'
-  | 'CATALOGOS'
+  | 'REGISTROS'
   | 'CONFIGURACION'
   | 'ROLES_PERMISOS';
 
@@ -25,24 +25,24 @@ export const ALL_NAV_IDS: NavId[] = [
   'DESPACHO',
   'ENTREGADO',
   'REPORTES',
-  'CATALOGOS',
+  'REGISTROS',
   'CONFIGURACION',
   'ROLES_PERMISOS'
 ];
 
-/** Roles de aplicación (valor de `usuario.rol` en JWT / MySQL). */
+/** Roles vigentes (valor de `usuario.rol` en JWT / MySQL). */
 export const APP_ROLES = [
   'ADMIN',
+  'GERENCIA',
   'PRODUCCION',
   'CAJA',
-  'VENTAS_1',
-  'VENTAS_2',
-  'VENTAS_3',
-  'VENTAS_4',
   'VENDEDORA'
 ] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
+
+/** Roles obsoletos (migrados automáticamente a VENDEDORA). */
+export const LEGACY_ROLES = ['VENTAS_1', 'VENTAS_2', 'VENTAS_3', 'VENTAS_4'] as const;
 
 export function navLabel(nav: NavId): string {
   const m: Record<NavId, string> = {
@@ -56,7 +56,7 @@ export function navLabel(nav: NavId): string {
     DESPACHO: 'Despacho',
     ENTREGADO: 'Entregados',
     REPORTES: 'Reportes',
-    CATALOGOS: 'Materiales y especiales',
+    REGISTROS: 'Registros',
     CONFIGURACION: 'Configuración',
     ROLES_PERMISOS: 'Roles y permisos'
   };
@@ -66,13 +66,10 @@ export function navLabel(nav: NavId): string {
 export function roleLabel(rol: string): string {
   const m: Record<string, string> = {
     ADMIN: 'Administrador',
+    GERENCIA: 'Gerencia',
     PRODUCCION: 'Producción',
     CAJA: 'Caja',
-    VENTAS_1: 'Ventas 1 (Isamar)',
-    VENTAS_2: 'Ventas 2 (Anabel)',
-    VENTAS_3: 'Ventas 3 (Diana)',
-    VENTAS_4: 'Ventas 4 (Melissa)',
-    VENDEDORA: 'Vendedora (legacy)'
+    VENDEDORA: 'Vendedora'
   };
   return m[rol] ?? rol;
 }

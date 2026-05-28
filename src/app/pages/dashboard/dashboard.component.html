@@ -91,8 +91,9 @@
         Reportes
       </a>
 
-      <a *ngIf="puedeVerNav('CATALOGOS')" (click)="seleccionarVista('CATALOGOS')" [class.active]="vistaActual === 'CATALOGOS'">
-        Materiales y especiales
+      <a *ngIf="puedeVerNav('REGISTROS')" (click)="seleccionarVista('REGISTROS')" [class.active]="vistaActual === 'REGISTROS'">
+        <span class="menu-icon" aria-hidden="true">▣</span>
+        Registros
       </a>
 
     </nav>
@@ -107,8 +108,8 @@
 
   <main class="main-content">
 
-    <header class="topbar">
-      <div>
+    <header class="topbar topbar-modern">
+      <div class="topbar-intro">
         <h1>
           {{
             vistaActual === 'DASHBOARD' ? 'Dashboard Ejecutivo' :
@@ -121,34 +122,46 @@
             vistaActual === 'ENTREGADO' ? 'Entregados' :
             vistaActual === 'PAGOS' ? 'Control de Pagos' :
             vistaActual === 'REPORTES' ? 'Reportes' :
-            vistaActual === 'CATALOGOS' ? 'Materiales y especiales' :
+            vistaActual === 'REGISTROS' ? 'Registros' :
             vistaActual === 'CONFIGURACION' ? 'Configuración' :
             vistaActual === 'ROLES_PERMISOS' ? 'Roles y permisos' :
             vistaActual
           }}
         </h1>
-        <p *ngIf="vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES' && vistaActual !== 'CATALOGOS'">Control empresarial de producción, prioridades y estados.</p>
-        <p *ngIf="vistaActual === 'CATALOGOS'">Administre el catálogo de materiales de melamina y los tipos de especiales de producción.</p>
-        <p *ngIf="vistaActual === 'REPORTES'">Filtre pedidos por cliente, vendedora, estados de proceso, máquinas, fechas y situación de pago. Los totales se calculan sobre el resultado.</p>
+        <p *ngIf="!esVistaSinListadoPedidos() && vistaActual !== 'CLIENTES'">Control empresarial de producción, prioridades y estados.</p>
+        <p *ngIf="vistaActual === 'REGISTROS'">Catálogo administrativo de materiales y especiales de producción.</p>
+        <p *ngIf="vistaActual === 'REPORTES'">Filtre pedidos por cliente, vendedora, estados de proceso, máquinas, fechas y situación de pago.</p>
         <p *ngIf="vistaActual === 'CONFIGURACION'">Datos de empresa, moneda y preferencias generales.</p>
-        <p *ngIf="vistaActual === 'ROLES_PERMISOS'">Usuarios, roles del sistema y matriz de vistas del menú (permisos en este navegador).</p>
+        <p *ngIf="vistaActual === 'ROLES_PERMISOS'">Usuarios, roles del sistema y matriz de vistas del menú.</p>
+        <p *ngIf="vistaActual === 'DASHBOARD'">Indicadores operativos y resumen de producción.</p>
+        <p *ngIf="vistaActual === 'CLIENTES'">Gestión de clientes y datos de contacto.</p>
       </div>
 
-      <button
-        class="btn-primary"
-        *ngIf="auth.canCreateOrder() && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES' && vistaActual !== 'CATALOGOS'"
-        (click)="abrirModal()"
-      >
-        + Nuevo Pedido
-      </button>
+      <div class="topbar-actions">
+        <button
+          class="qg-btn qg-btn-primary"
+          *ngIf="auth.canCreateOrder() && !esVistaSinListadoPedidos() && vistaActual !== 'CLIENTES'"
+          (click)="abrirModal()"
+        >
+          + Nuevo Pedido
+        </button>
 
-      <button
-        class="btn-primary"
-        *ngIf="vistaActual === 'CLIENTES' && auth.canCreateOrder()"
-        (click)="abrirModalCliente()"
-      >
-        + Nuevo Cliente
-      </button>
+        <button
+          class="qg-btn qg-btn-primary"
+          *ngIf="vistaActual === 'CLIENTES' && auth.canCreateOrder()"
+          (click)="abrirModalCliente()"
+        >
+          + Nuevo Cliente
+        </button>
+
+        <div class="topbar-user" *ngIf="auth.usuario() as u">
+          <div class="topbar-user-meta">
+            <span class="topbar-user-name">{{ u.nombre }}</span>
+            <span class="topbar-user-role">{{ rolEtiqueta(u.rol) }}</span>
+          </div>
+          <div class="topbar-avatar" aria-hidden="true">{{ (u.nombre || 'U').charAt(0) }}</div>
+        </div>
+      </div>
     </header>
 
     <!-- DASHBOARD -->
@@ -479,7 +492,7 @@
     </section>
 
     <!-- FILTROS -->
-    <section class="filters-card" *ngIf="vistaActual !== 'DASHBOARD' && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'">
+    <section class="filters-card" *ngIf="!esVistaSinListadoPedidos() && vistaActual !== 'CLIENTES'">
       <input type="text" [(ngModel)]="filtroCliente" (ngModelChange)="onFiltrosCambiaron()" placeholder="Buscar cliente...">
 
       <select [(ngModel)]="filtroVendedora" (ngModelChange)="onFiltrosCambiaron()">
@@ -616,7 +629,7 @@
     <!-- TABLA -->
     <section
         class="table-card"
-        *ngIf="vistaActual !== 'DASHBOARD' && vistaActual !== 'CLIENTES' && vistaActual !== 'CONFIGURACION' && vistaActual !== 'ROLES_PERMISOS' && vistaActual !== 'REPORTES'"
+        *ngIf="!esVistaSinListadoPedidos() && vistaActual !== 'CLIENTES'"
       >
 
       <div class="card-header">
@@ -903,7 +916,7 @@
 
     </section>
 
-    <app-catalogos-panel *ngIf="vistaActual === 'CATALOGOS'"></app-catalogos-panel>
+    <app-registros-panel *ngIf="vistaActual === 'REGISTROS'"></app-registros-panel>
 
     <!-- CLIENTES -->
     <section

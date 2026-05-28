@@ -1,0 +1,277 @@
+<section class="registros-panel">
+  <header class="registros-hero qg-card">
+    <div>
+      <h2>Registros de producción</h2>
+      <p>Catálogo administrativo de materiales de melamina y tipos de especiales.</p>
+    </div>
+    <div class="registros-hero-stats">
+      <div class="registros-stat">
+        <span>Materiales</span>
+        <strong>{{ materiales.length }}</strong>
+      </div>
+      <div class="registros-stat">
+        <span>Especiales</span>
+        <strong>{{ especiales.length }}</strong>
+      </div>
+    </div>
+  </header>
+
+  <nav class="registros-tabs" aria-label="Secciones de registros">
+    <button type="button" [class.active]="pestana === 'MATERIALES'" (click)="cambiarPestana('MATERIALES')">
+      Materiales
+    </button>
+    <button type="button" [class.active]="pestana === 'ESPECIALES'" (click)="cambiarPestana('ESPECIALES')">
+      Especiales
+    </button>
+  </nav>
+
+  <!-- MATERIALES -->
+  <div class="registros-section qg-card" *ngIf="pestana === 'MATERIALES'">
+    <div class="registros-toolbar">
+      <div class="registros-toolbar-title">
+        <h3>Materiales</h3>
+        <span>{{ materialesFiltrados.length }} de {{ materiales.length }} registros</span>
+      </div>
+      <button type="button" class="qg-btn qg-btn-accent" *ngIf="esAdmin()" (click)="abrirNuevoMaterial()">
+        + Nuevo material
+      </button>
+    </div>
+
+    <div class="registros-filters">
+      <div class="filter-field filter-search">
+        <label>Buscar</label>
+        <input
+          class="qg-input"
+          type="search"
+          placeholder="Nombre, marca o color..."
+          [(ngModel)]="busquedaMaterial"
+          (ngModelChange)="filtrarMateriales()"
+        >
+      </div>
+      <div class="filter-field">
+        <label>Marca</label>
+        <select class="qg-select" [(ngModel)]="filtroMarca" (ngModelChange)="filtrarMateriales()">
+          <option value="">Todas</option>
+          <option value="PELIKANO">PELIKANO</option>
+          <option value="HISPANOS">HISPANOS</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Tipo</label>
+        <select class="qg-select" [(ngModel)]="filtroTipo" (ngModelChange)="filtrarMateriales()">
+          <option value="">Todos</option>
+          <option value="NORMAL">NORMAL</option>
+          <option value="RH">RH</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>Estado</label>
+        <select class="qg-select" [(ngModel)]="filtroActivoMaterial" (ngModelChange)="filtrarMateriales()">
+          <option value="">Todos</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
+      </div>
+      <div class="filter-field filter-actions">
+        <label>&nbsp;</label>
+        <button type="button" class="qg-btn qg-btn-secondary" (click)="limpiarFiltrosMateriales()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="registros-table-wrap">
+      <table class="registros-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Marca</th>
+            <th>Color</th>
+            <th>Tipo</th>
+            <th>Espesor</th>
+            <th>Medida</th>
+            <th>Estado</th>
+            <th *ngIf="esAdmin()" class="col-acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of materialesFiltrados">
+            <td class="col-nombre" [title]="m.nombre">{{ m.nombre }}</td>
+            <td>{{ m.marca || '—' }}</td>
+            <td>{{ m.color || '—' }}</td>
+            <td>{{ m.tipo || '—' }}</td>
+            <td>{{ m.espesor || '—' }}</td>
+            <td>{{ m.medida || '—' }}</td>
+            <td>
+              <span class="qg-badge" [class.qg-badge-success]="m.activo" [class.qg-badge-muted]="!m.activo">
+                {{ m.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td *ngIf="esAdmin()" class="col-acciones">
+              <div class="registros-actions">
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-secondary" (click)="abrirEditarMaterial(m)">Editar</button>
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-warning" (click)="toggleMaterial(m)">
+                  {{ m.activo ? 'Desactivar' : 'Activar' }}
+                </button>
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-danger" (click)="eliminarMaterial(m)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="materialesFiltrados.length === 0">
+            <td [attr.colspan]="esAdmin() ? 8 : 7" class="registros-empty">No hay materiales con los filtros aplicados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ESPECIALES -->
+  <div class="registros-section qg-card" *ngIf="pestana === 'ESPECIALES'">
+    <div class="registros-toolbar">
+      <div class="registros-toolbar-title">
+        <h3>Especiales</h3>
+        <span>{{ especialesFiltrados.length }} de {{ especiales.length }} registros</span>
+      </div>
+      <button type="button" class="qg-btn qg-btn-accent" *ngIf="esAdmin()" (click)="abrirNuevoEspecial()">
+        + Nuevo especial
+      </button>
+    </div>
+
+    <div class="registros-filters registros-filters-compact">
+      <div class="filter-field filter-search">
+        <label>Buscar</label>
+        <input
+          class="qg-input"
+          type="search"
+          placeholder="Nombre o descripción..."
+          [(ngModel)]="busquedaEspecial"
+          (ngModelChange)="filtrarEspeciales()"
+        >
+      </div>
+      <div class="filter-field">
+        <label>Estado</label>
+        <select class="qg-select" [(ngModel)]="filtroActivoEspecial" (ngModelChange)="filtrarEspeciales()">
+          <option value="">Todos</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
+      </div>
+      <div class="filter-field filter-actions">
+        <label>&nbsp;</label>
+        <button type="button" class="qg-btn qg-btn-secondary" (click)="limpiarFiltrosEspeciales()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="registros-table-wrap">
+      <table class="registros-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            <th *ngIf="esAdmin()" class="col-acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of especialesFiltrados">
+            <td class="col-nombre">{{ e.nombre }}</td>
+            <td>{{ e.descripcion || '—' }}</td>
+            <td>
+              <span class="qg-badge" [class.qg-badge-success]="e.activo" [class.qg-badge-muted]="!e.activo">
+                {{ e.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td *ngIf="esAdmin()" class="col-acciones">
+              <div class="registros-actions">
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-secondary" (click)="abrirEditarEspecial(e)">Editar</button>
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-warning" (click)="toggleEspecial(e)">
+                  {{ e.activo ? 'Desactivar' : 'Activar' }}
+                </button>
+                <button type="button" class="qg-btn qg-btn-sm qg-btn-danger" (click)="eliminarEspecial(e)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="especialesFiltrados.length === 0">
+            <td [attr.colspan]="esAdmin() ? 4 : 3" class="registros-empty">No hay especiales con los filtros aplicados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Modal material -->
+<div class="registros-modal-backdrop" *ngIf="mostrarModalMaterial" (click)="cerrarModalMaterial()">
+  <div class="registros-modal qg-card" role="dialog" (click)="$event.stopPropagation()">
+    <header class="registros-modal-header">
+      <h3>{{ modoEdicion ? 'Editar material' : 'Nuevo material' }}</h3>
+      <button type="button" class="qg-btn qg-btn-icon qg-btn-ghost" (click)="cerrarModalMaterial()" aria-label="Cerrar">×</button>
+    </header>
+    <form class="registros-modal-body" (ngSubmit)="guardarMaterial()">
+      <div class="form-field full">
+        <label>Nombre <span>*</span></label>
+        <input class="qg-input" type="text" [(ngModel)]="materialForm.nombre" name="matNombre" required>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Marca</label>
+          <select class="qg-select" [(ngModel)]="materialForm.marca" name="matMarca">
+            <option value="PELIKANO">PELIKANO</option>
+            <option value="HISPANOS">HISPANOS</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Tipo</label>
+          <select class="qg-select" [(ngModel)]="materialForm.tipo" name="matTipo">
+            <option value="NORMAL">NORMAL</option>
+            <option value="RH">RH</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Color</label>
+          <input class="qg-input" type="text" [(ngModel)]="materialForm.color" name="matColor">
+        </div>
+        <div class="form-field">
+          <label>Espesor</label>
+          <input class="qg-input" type="text" [(ngModel)]="materialForm.espesor" name="matEspesor">
+        </div>
+        <div class="form-field">
+          <label>Medida</label>
+          <input class="qg-input" type="text" [(ngModel)]="materialForm.medida" name="matMedida">
+        </div>
+      </div>
+      <footer class="registros-modal-footer">
+        <button type="button" class="qg-btn qg-btn-ghost" (click)="cerrarModalMaterial()">Cancelar</button>
+        <button type="submit" class="qg-btn qg-btn-primary" [disabled]="guardando">
+          {{ guardando ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>
+
+<!-- Modal especial -->
+<div class="registros-modal-backdrop" *ngIf="mostrarModalEspecial" (click)="cerrarModalEspecial()">
+  <div class="registros-modal qg-card" role="dialog" (click)="$event.stopPropagation()">
+    <header class="registros-modal-header">
+      <h3>{{ modoEdicion ? 'Editar especial' : 'Nuevo especial' }}</h3>
+      <button type="button" class="qg-btn qg-btn-icon qg-btn-ghost" (click)="cerrarModalEspecial()" aria-label="Cerrar">×</button>
+    </header>
+    <form class="registros-modal-body" (ngSubmit)="guardarEspecial()">
+      <div class="form-field full">
+        <label>Nombre <span>*</span></label>
+        <input class="qg-input" type="text" [(ngModel)]="especialForm.nombre" name="espNombre" required>
+      </div>
+      <div class="form-field full">
+        <label>Descripción</label>
+        <textarea class="qg-input" rows="3" [(ngModel)]="especialForm.descripcion" name="espDescripcion"></textarea>
+      </div>
+      <footer class="registros-modal-footer">
+        <button type="button" class="qg-btn qg-btn-ghost" (click)="cerrarModalEspecial()">Cancelar</button>
+        <button type="submit" class="qg-btn qg-btn-primary" [disabled]="guardando">
+          {{ guardando ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>

@@ -65,17 +65,7 @@ export class AuthService {
   }
 
   canCreateOrder(): boolean {
-    const r = (this.usuario()?.rol ?? '').toUpperCase();
-    return [
-      'ADMIN',
-      'PRODUCCION',
-      'CAJA',
-      'VENTAS_1',
-      'VENTAS_2',
-      'VENTAS_3',
-      'VENTAS_4',
-      'VENDEDORA'
-    ].includes(r);
+    return this.hasRole('ADMIN', 'GERENCIA', 'PRODUCCION', 'CAJA', 'VENDEDORA');
   }
 
   canEditOrder(): boolean {

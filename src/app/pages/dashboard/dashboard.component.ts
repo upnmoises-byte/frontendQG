@@ -20,7 +20,7 @@ import { MaterialService } from '../../services/material.service';
 import { CatalogoEspecialService } from '../../services/catalogo-especial.service';
 import { Material } from '../../models/material.model';
 import { CatalogoEspecial } from '../../models/catalogo-especial.model';
-import { CatalogosPanelComponent } from '../catalogos/catalogos-panel.component';
+import { RegistrosPanelComponent } from '../registros/registros-panel.component';
 
 const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
   PEDIDOS: [
@@ -64,7 +64,7 @@ const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, CatalogosPanelComponent],
+  imports: [CommonModule, FormsModule, RegistrosPanelComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -254,6 +254,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (this.vistaActual === 'CATALOGOS') {
+      this.vistaActual = 'REGISTROS';
+    }
     this.rolesMatrix = { ...this.perms.getFullMatrix() };
     this.asegurarVistaPermitida();
     this.cargarPedidos();
@@ -271,10 +274,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private vendedoraAsignadaPorRol(): string | null {
     const r = (this.auth.usuario()?.rol ?? '').toUpperCase();
-    if (['VENTAS_1', 'VENTAS_2', 'VENTAS_3', 'VENTAS_4', 'VENDEDORA'].includes(r)) {
-      return this.auth.usuario()?.nombre?.trim() || null;
+    if (r === 'VENDEDORA') {
+      return this.inferirCodigoVendedora(this.auth.usuario()?.nombre);
     }
     return null;
+  }
+
+  private inferirCodigoVendedora(nombre?: string | null): string | null {
+    const n = (nombre || '').toUpperCase();
+    if (n.includes('ISAMAR')) {
+      return 'ISAMAR';
+    }
+    if (n.includes('ANABEL')) {
+      return 'ANABEL';
+    }
+    if (n.includes('DIANA')) {
+      return 'DIANA';
+    }
+    if (n.includes('MELISSA')) {
+      return 'MELISSA';
+    }
+    return nombre?.trim().toUpperCase() || null;
+  }
+
+  esVistaSinListadoPedidos(): boolean {
+    return [
+      'DASHBOARD',
+      'CLIENTES',
+      'CONFIGURACION',
+      'ROLES_PERMISOS',
+      'REPORTES',
+      'REGISTROS'
+    ].includes(this.vistaActual);
   }
 
   opcionesVendedoraSelect(): { value: string; label: string }[] {
@@ -605,7 +636,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (
       this.vistaActual === 'DASHBOARD' ||
       this.vistaActual === 'CONFIGURACION' ||
-      this.vistaActual === 'ROLES_PERMISOS'
+      this.vistaActual === 'ROLES_PERMISOS' ||
+      this.vistaActual === 'REGISTROS'
     ) {
       this.columnKeys = new Set();
       this.pedidosVistaRows = [];
