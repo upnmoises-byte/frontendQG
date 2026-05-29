@@ -148,7 +148,7 @@
 
         <button
           class="qg-btn qg-btn-primary"
-          *ngIf="vistaActual === 'CLIENTES' && auth.canCreateOrder()"
+          *ngIf="vistaActual === 'CLIENTES' && auth.canCrearCliente()"
           (click)="abrirModalCliente()"
         >
           + Nuevo Cliente
@@ -366,11 +366,11 @@
           <h2>Configuración</h2>
           <p>Parámetros generales de empresa, moneda y preferencias del sistema.</p>
         </div>
-        <button type="button" class="btn-primary" *ngIf="auth.hasRole('ADMIN')" (click)="guardarConfiguracion()">Guardar cambios</button>
+        <button type="button" class="btn-primary" *ngIf="auth.puede('CONFIG_EDITAR')" (click)="guardarConfiguracion()">Guardar cambios</button>
       </div>
 
       <ng-container *ngIf="configKeysOrdenadas.length > 0; else configCargandoTpl">
-        <div class="config-grid" *ngIf="auth.hasRole('ADMIN'); else configSoloLecturaTpl">
+        <div class="config-grid" *ngIf="auth.puede('CONFIG_EDITAR'); else configSoloLecturaTpl">
           <div class="field" *ngFor="let key of configKeysOrdenadas; trackBy: trackByConfigKey">
             <label>{{ etiquetaClaveConfig(key) }}</label>
             <input type="text" [(ngModel)]="configMapa[key]" [name]="'cfg-' + key" />
@@ -391,105 +391,7 @@
       </ng-template>
     </section>
 
-    <!-- ROLES Y PERMISOS -->
-    <section class="table-card roles-permisos-card" *ngIf="vistaActual === 'ROLES_PERMISOS'">
-      <ng-container *ngIf="auth.hasRole('ADMIN'); else sinPermisoRolesTpl">
-        <div class="card-header roles-header">
-          <div>
-            <h2>Administración de accesos</h2>
-            <p>Usuarios, roles disponibles y permisos visibles por cada perfil.</p>
-          </div>
-          <span>La matriz de menú se guarda en este navegador.</span>
-        </div>
-
-        <div class="roles-section">
-          <div class="section-title-row">
-            <h3 class="subsection-title">Usuarios</h3>
-            <button type="button" class="btn-primary" (click)="abrirModalUsuarioNuevo()">+ Nuevo usuario</button>
-          </div>
-          <div class="table-wrapper admin-users-wrap">
-            <table class="admin-users-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Correo</th>
-                  <th>Rol</th>
-                  <th>Activo</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let u of usuariosAdmin; trackBy: trackByUsuarioAdminId">
-                  <td>{{ u.nombre }}</td>
-                  <td>{{ u.correo }}</td>
-                  <td><span class="rol-chip compact">{{ u.rol }}</span></td>
-                  <td><span class="status-pill" [class.inactive]="!u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span></td>
-                  <td><button type="button" class="edit-btn" (click)="abrirModalUsuarioEditar(u)">Editar</button></td>
-                </tr>
-                <tr *ngIf="usuariosAdmin.length === 0">
-                  <td colspan="5" class="empty">No hay usuarios o aún se están cargando.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="roles-section">
-          <div class="section-title-row">
-            <div>
-              <h3 class="subsection-title">Roles en el sistema</h3>
-              <p class="config-hint">Los usuarios solo pueden asignarse roles que existan aquí.</p>
-            </div>
-            <div class="admin-toolbar rol-catalog-toolbar">
-              <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="Nuevo rol (ej. LOGISTICA)" name="nuevoRolNombre" />
-              <button type="button" class="btn-primary" (click)="crearRolEnCatalogo()">Agregar rol</button>
-            </div>
-          </div>
-          <div class="rol-chips">
-            <span class="rol-chip" *ngFor="let r of rolesMatrixRoles; trackBy: trackByString">
-              {{ r }}
-              <button type="button" class="chip-remove" *ngIf="!rolesNoEliminarEnCatalogo.has(r)" (click)="eliminarRolCatalogo(r)" title="Eliminar del catálogo">×</button>
-            </span>
-          </div>
-        </div>
-
-        <div class="roles-section">
-          <div class="section-title-row">
-            <h3 class="subsection-title">Matriz de vistas por rol</h3>
-          </div>
-          <div class="table-wrapper roles-matrix-wrap">
-            <table class="roles-matrix">
-              <thead>
-                <tr>
-                  <th class="sticky-col">Rol</th>
-                  <th *ngFor="let nav of navIdsLista; trackBy: trackByNavId">{{ navEtiqueta(nav) }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let rol of rolesMatrixRoles; trackBy: trackByString">
-                  <td class="sticky-col rol-name-cell">{{ rolEtiqueta(rol) }}</td>
-                  <td *ngFor="let nav of navIdsLista; trackBy: trackByNavId" class="check-cell">
-                    <input
-                      type="checkbox"
-                      [checked]="permisoNavActivo(rol, nav)"
-                      (change)="togglePermisoNav(rol, nav, $any($event.target).checked)"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="roles-actions">
-            <button type="button" class="btn-primary" (click)="guardarMatrizPermisos()">Guardar permisos del menú</button>
-            <button type="button" class="cancel-btn" (click)="restaurarMatrizPorDefecto()">Restaurar por defecto</button>
-          </div>
-        </div>
-      </ng-container>
-      <ng-template #sinPermisoRolesTpl>
-        <p class="empty" style="padding: 24px;">No tiene permisos para administrar roles y permisos.</p>
-      </ng-template>
-    </section>
+    <app-roles-permisos-panel *ngIf="vistaActual === 'ROLES_PERMISOS'"></app-roles-permisos-panel>
 
     <!-- FILTROS -->
     <section class="filters-card" *ngIf="!esVistaSinListadoPedidos() && vistaActual !== 'CLIENTES'">
@@ -967,6 +869,7 @@
                 <button
                   type="button"
                   class="edit-btn"
+                  *ngIf="auth.canEditarCliente()"
                   (click)="abrirEditarCliente(c)"
                 >
                   Editar
@@ -974,6 +877,7 @@
 
                 <button
                   class="delete-btn"
+                  *ngIf="auth.canEliminarCliente()"
                   (click)="eliminarCliente(c)"
                 >
                   Eliminar
@@ -1391,7 +1295,7 @@
         <div class="field full">
           <label>Rol</label>
           <select name="uRol" [(ngModel)]="usuarioForm.rol" required>
-            <option *ngFor="let r of rolesMatrixRoles; trackBy: trackByString" [value]="r">{{ rolEtiqueta(r) }}</option>
+            <option *ngFor="let r of rolesCatalogoNombres; trackBy: trackByString" [value]="r">{{ rolEtiqueta(r) }}</option>
           </select>
         </div>
         <div class="field full">

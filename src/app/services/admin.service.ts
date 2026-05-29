@@ -60,4 +60,8 @@ export class AdminService {
   eliminarRolCatalogo(nombre: string): Observable<void> {
     return this.http.delete<void>(`${this.API}/roles-catalogo/${encodeURIComponent(nombre)}`);
   }
+
+  actualizarRolUsuario(id: number, rol: string): Observable<UsuarioAdmin> {
+    return this.http.put<UsuarioAdmin>(`${environment.apiUrl}/usuarios/${id}/rol`, { rol });
+  }
 }

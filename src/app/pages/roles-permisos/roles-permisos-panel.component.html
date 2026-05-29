@@ -1,0 +1,160 @@
+<div class="rp-panel" *ngIf="puedeGestionar; else sinAcceso">
+  <header class="rp-hero">
+    <div>
+      <h2>Roles y permisos</h2>
+      <p>Usuarios, perfiles del sistema y permisos granulares guardados en MySQL.</p>
+    </div>
+    <span class="rp-badge">ERP · Control de acceso</span>
+  </header>
+
+  <section class="rp-section">
+    <div class="rp-section-head">
+      <h3>Usuarios</h3>
+      <span class="rp-muted">{{ usuarios.length }} registrados</span>
+    </div>
+    <div class="rp-table-wrap">
+      <table class="rp-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of usuarios">
+            <td>{{ u.nombre }}</td>
+            <td>{{ u.correo }}</td>
+            <td><span class="rp-chip">{{ u.rol }}</span></td>
+            <td>
+              <span class="rp-status" [class.off]="!u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span>
+            </td>
+            <td class="rp-actions">
+              <button type="button" class="rp-btn ghost" (click)="abrirEditarUsuario(u)" *ngIf="auth.puede('ROLES_EDITAR')">
+                Editar rol
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!usuarios.length && !cargando">
+            <td colspan="5" class="rp-empty">Sin usuarios</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-section">
+    <div class="rp-section-head">
+      <h3>Roles</h3>
+      <div class="rp-inline-form" *ngIf="auth.puede('ROLES_CREAR')">
+        <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="NOMBRE_ROL" />
+        <input type="text" [(ngModel)]="nuevoRolDescripcion" placeholder="Descripción" />
+        <button type="button" class="rp-btn primary" (click)="crearRol()">Crear rol</button>
+      </div>
+    </div>
+    <div class="rp-roles-grid">
+      <article
+        class="rp-role-card"
+        *ngFor="let r of roles"
+        [class.selected]="rolSeleccionado === r.nombre"
+        [class.inactive]="!r.activo"
+        (click)="seleccionarRol(r.nombre)"
+      >
+        <div class="rp-role-top">
+          <strong>{{ r.nombre }}</strong>
+          <span class="rp-count">{{ r.usuariosCount }} usuarios</span>
+        </div>
+        <p>{{ r.descripcion || 'Sin descripción' }}</p>
+        <div class="rp-role-actions" (click)="$event.stopPropagation()">
+          <button type="button" class="rp-btn ghost sm" (click)="iniciarEditarRol(r)" *ngIf="auth.puede('ROLES_EDITAR')">Editar</button>
+          <button type="button" class="rp-btn ghost sm" (click)="activarRol(r)" *ngIf="!r.activo && auth.puede('ROLES_EDITAR')">Activar</button>
+          <button type="button" class="rp-btn ghost sm" (click)="desactivarRol(r)" *ngIf="r.activo && !esRolProtegido(r.nombre) && auth.puede('ROLES_EDITAR')">Desactivar</button>
+          <button type="button" class="rp-btn danger sm" (click)="eliminarRol(r)" *ngIf="!esRolProtegido(r.nombre) && auth.puede('ROLES_ELIMINAR')">Eliminar</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="rp-section" *ngIf="rolSeleccionado">
+    <div class="rp-section-head">
+      <div>
+        <h3>Permisos · {{ rolEtiqueta(rolSeleccionado) }}</h3>
+        <p class="rp-muted">Seleccione el rol y marque los permisos por módulo.</p>
+      </div>
+      <div class="rp-filters">
+        <input type="search" [(ngModel)]="filtroPermiso" placeholder="Buscar permiso…" />
+        <select [(ngModel)]="filtroModulo">
+          <option value="">Todos los módulos</option>
+          <option *ngFor="let m of modulosOrden" [value]="m">{{ m }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="rp-matrix">
+      <div class="rp-module" *ngFor="let mod of modulosVisibles()">
+        <h4>{{ mod }}</h4>
+        <div class="rp-perm-grid">
+          <label class="rp-perm" *ngFor="let p of permisosPorModulo(mod)">
+            <input
+              type="checkbox"
+              [checked]="tienePermiso(p.codigo)"
+              (change)="togglePermiso(p.codigo, $any($event.target).checked)"
+              [disabled]="!auth.puede('ROLES_ASIGNAR_PERMISOS')"
+            />
+            <span>
+              <strong>{{ p.codigo }}</strong>
+              <small>{{ p.descripcion }}</small>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="rp-footer-actions">
+      <button
+        type="button"
+        class="rp-btn primary"
+        [disabled]="guardandoPermisos || !hayCambiosPermisos()"
+        (click)="guardarPermisosRol()"
+        *ngIf="auth.puede('ROLES_ASIGNAR_PERMISOS')"
+      >
+        {{ guardandoPermisos ? 'Guardando…' : 'Guardar permisos' }}
+      </button>
+      <button type="button" class="rp-btn ghost" (click)="restaurarPermisosDefecto()" *ngIf="auth.puede('ROLES_ASIGNAR_PERMISOS')">
+        Restaurar por defecto
+      </button>
+    </div>
+  </section>
+</div>
+
+<ng-template #sinAcceso>
+  <p class="rp-empty-block">No tiene permisos para administrar roles y permisos.</p>
+</ng-template>
+
+<div class="rp-modal-backdrop" *ngIf="editandoUsuario">
+  <div class="rp-modal">
+    <h3>Cambiar rol de usuario</h3>
+    <p>{{ editandoUsuario?.nombre }} · {{ editandoUsuario?.correo }}</p>
+    <select [(ngModel)]="editUsuarioRol">
+      <option *ngFor="let r of roles" [value]="r.nombre" [disabled]="!r.activo">{{ r.nombre }}</option>
+    </select>
+    <div class="rp-modal-actions">
+      <button type="button" class="rp-btn ghost" (click)="editandoUsuario = null">Cancelar</button>
+      <button type="button" class="rp-btn primary" (click)="guardarRolUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="rp-modal-backdrop" *ngIf="editandoRol">
+  <div class="rp-modal">
+    <h3>Editar rol {{ editandoRol?.nombre }}</h3>
+    <label>Descripción</label>
+    <textarea rows="3" [(ngModel)]="editRolDescripcion"></textarea>
+    <div class="rp-modal-actions">
+      <button type="button" class="rp-btn ghost" (click)="editandoRol = null">Cancelar</button>
+      <button type="button" class="rp-btn primary" (click)="guardarEditarRol()">Guardar</button>
+    </div>
+  </div>
+</div>

@@ -1,9 +1,10 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { LoginResponse, UsuarioSesion } from '../models/auth.model';
+import { PermissionsService } from './permissions.service';
 
 const STORAGE_USER = 'usuario';
 const STORAGE_TOKEN = 'token';
@@ -14,11 +15,16 @@ const STORAGE_TOKEN = 'token';
 export class AuthService {
 
   private readonly apiUrl = `${environment.apiUrl}/auth`;
+  private readonly perms = inject(PermissionsService);
 
-  /** Sesión actual (persistida en localStorage). */
   readonly usuario = signal<UsuarioSesion | null>(this.readUsuario());
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    const u = this.usuario();
+    if (u?.permisos?.length) {
+      this.perms.setUserPermisos(u.permisos);
+    }
+  }
 
   isAuthenticated(): boolean {
     return !!localStorage.getItem(STORAGE_TOKEN) && !!localStorage.getItem(STORAGE_USER);
@@ -34,6 +40,7 @@ export class AuthService {
         localStorage.setItem(STORAGE_TOKEN, res.token);
         localStorage.setItem(STORAGE_USER, JSON.stringify(res.usuario));
         this.usuario.set(res.usuario);
+        this.perms.setUserPermisos(res.usuario.permisos);
       })
     );
   }
@@ -42,6 +49,7 @@ export class AuthService {
     localStorage.removeItem(STORAGE_TOKEN);
     localStorage.removeItem(STORAGE_USER);
     this.usuario.set(null);
+    this.perms.clearUserPermisos();
   }
 
   private readUsuario(): UsuarioSesion | null {
@@ -64,20 +72,24 @@ export class AuthService {
     return roles.some((x) => x.toUpperCase() === r);
   }
 
+  puede(codigo: string): boolean {
+    return this.perms.puede(codigo);
+  }
+
   canCreateOrder(): boolean {
-    return this.hasRole('ADMIN', 'GERENCIA', 'PRODUCCION', 'CAJA', 'VENDEDORA');
+    return this.puede('PEDIDOS_CREAR');
   }
 
   canEditOrder(): boolean {
-    return this.hasRole('ADMIN');
+    return this.puede('PEDIDOS_EDITAR');
   }
 
   canDeleteOrder(): boolean {
-    return this.hasRole('ADMIN');
+    return this.puede('PEDIDOS_ELIMINAR');
   }
 
   canChangeEstado(): boolean {
-    return this.hasRole('ADMIN', 'PRODUCCION');
+    return this.puede('PEDIDOS_CAMBIAR_ESTADO');
   }
 
   isAdmin(): boolean {
@@ -85,7 +97,27 @@ export class AuthService {
   }
 
   canRegistrarPago(): boolean {
-    return this.hasRole('ADMIN', 'PRODUCCION', 'CAJA');
+    return this.puede('PAGOS_REGISTRAR');
+  }
+
+  canEliminarCliente(): boolean {
+    return this.puede('CLIENTES_ELIMINAR');
+  }
+
+  canEditarCliente(): boolean {
+    return this.puede('CLIENTES_EDITAR');
+  }
+
+  canCrearCliente(): boolean {
+    return this.puede('CLIENTES_CREAR');
+  }
+
+  canVerRegistros(): boolean {
+    return this.puede('REGISTROS_VER');
+  }
+
+  canAdministrarRoles(): boolean {
+    return this.puede('ROLES_VER');
   }
 
   sessionUsuario(): UsuarioSesion | null {

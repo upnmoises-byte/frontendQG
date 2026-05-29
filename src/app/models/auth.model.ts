@@ -3,6 +3,7 @@ export interface UsuarioSesion {
   nombre: string;
   correo: string;
   rol: string;
+  permisos?: string[];
 }
 
 export interface LoginResponse {

@@ -9,7 +9,8 @@ import { AuthService } from '../../services/auth.service';
 import { ClienteService, ClientePayload } from '../../services/cliente.service';
 import { UsuarioSesion } from '../../models/auth.model';
 import { PermissionsService } from '../../services/permissions.service';
-import { ALL_NAV_IDS, APP_ROLES, NavId, navLabel, roleLabel } from '../../config/nav-permissions';
+import { APP_ROLES, NavId, navLabel, roleLabel } from '../../config/nav-permissions';
+import { RolService } from '../../services/rol.service';
 import { AppConfigService } from '../../services/app-config.service';
 import { AdminService, UsuarioAdmin } from '../../services/admin.service';
 import { NotificationService } from '../../services/notification.service';
@@ -21,6 +22,7 @@ import { CatalogoEspecialService } from '../../services/catalogo-especial.servic
 import { Material } from '../../models/material.model';
 import { CatalogoEspecial } from '../../models/catalogo-especial.model';
 import { RegistrosPanelComponent } from '../registros/registros-panel.component';
+import { RolesPermisosPanelComponent } from '../roles-permisos/roles-permisos-panel.component';
 
 const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
   PEDIDOS: [
@@ -64,7 +66,7 @@ const COLUMNAS_POR_VISTA: Record<string, readonly string[]> = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RegistrosPanelComponent],
+  imports: [CommonModule, FormsModule, RegistrosPanelComponent, RolesPermisosPanelComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -190,20 +192,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   materialBusqueda: string[] = [];
   materialDropdownIndex: number | null = null;
 
-  /** Matriz editable en «Roles y permisos» (solo admin). */
-  rolesMatrix: Record<string, NavId[]> = {};
-
-  /** Filas de la matriz = built-in + roles del catálogo en servidor. */
-  rolesMatrixRoles: string[] = [...APP_ROLES];
-
-  readonly navIdsLista = ALL_NAV_IDS;
+  rolesCatalogoNombres: string[] = [...APP_ROLES];
 
   configMapa: Record<string, string> = {};
   /** Claves de configuración ordenadas (evita `Object.keys` en cada ciclo de detección de cambios). */
   configKeysOrdenadas: string[] = [];
 
   usuariosAdmin: UsuarioAdmin[] = [];
-  nuevoRolNombre = '';
 
   mostrarModalPago = false;
   mostrarHistorialPagos = false;
@@ -248,7 +243,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private reporte: ReporteService,
     private factiliza: FactilizaService,
     private materialService: MaterialService,
-    private catalogoEspecialService: CatalogoEspecialService
+    private catalogoEspecialService: CatalogoEspecialService,
+    private rolService: RolService
   ) {
     this.nuevoPedido = this.pedidoVacio();
   }
@@ -257,8 +253,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.vistaActual === 'CATALOGOS') {
       this.vistaActual = 'REGISTROS';
     }
-    this.rolesMatrix = { ...this.perms.getFullMatrix() };
     this.asegurarVistaPermitida();
+    this.cargarRolesCatalogoNombres();
     this.cargarPedidos();
     this.cargarClientes();
     this.actualizarViewport();
@@ -1040,13 +1036,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.filtroFechaIngresoDesde = '';
     this.filtroFechaIngresoHasta = '';
 
-    if (nav === 'ROLES_PERMISOS') {
-      this.rolesMatrix = { ...this.perms.getFullMatrix() };
-      if (this.auth.hasRole('ADMIN')) {
-        this.refrescarRolesYUsuariosAdmin();
-      }
-    }
-
     if (nav === 'CONFIGURACION') {
       this.cargarConfiguracion();
     }
@@ -1065,50 +1054,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  permisoNavActivo(rol: string, nav: NavId): boolean {
-    return (this.rolesMatrix[rol] ?? []).includes(nav);
-  }
-
-  togglePermisoNav(rol: string, nav: NavId, activo: boolean): void {
-    const actual = new Set(this.rolesMatrix[rol] ?? []);
-    if (activo) {
-      actual.add(nav);
-    } else {
-      actual.delete(nav);
-    }
-    this.rolesMatrix = {
-      ...this.rolesMatrix,
-      [rol]: ALL_NAV_IDS.filter((n) => actual.has(n))
-    };
-    this.cdr.markForCheck();
-  }
-
-  guardarMatrizPermisos(): void {
-    if (!this.auth.hasRole('ADMIN')) {
-      this.notify.warning('Solo un administrador puede guardar permisos.');
-      return;
-    }
-    this.perms.saveFullMatrix(this.rolesMatrix);
-    this.notify.success('Permisos guardados. Los cambios aplican en la próxima navegación o al recargar la página.');
-    this.cdr.markForCheck();
-  }
-
-  restaurarMatrizPorDefecto(): void {
-    if (!this.auth.hasRole('ADMIN')) {
-      return;
-    }
-    if (!confirm('¿Restaurar permisos por defecto para todos los roles?')) {
-      return;
-    }
-    this.perms.clearStoredMatrix();
-    this.rolesMatrix = { ...this.perms.getFullMatrix() };
-    this.notify.success('Se restauraron los valores por defecto.');
-    if (this.auth.hasRole('ADMIN')) {
-      this.refrescarRolesYUsuariosAdmin();
-    }
-    this.cdr.markForCheck();
-  }
-
   private cargarConfiguracion(): void {
     this.appConfig.obtener().subscribe({
       next: (m) => {
@@ -1121,8 +1066,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   guardarConfiguracion(): void {
-    if (!this.auth.hasRole('ADMIN')) {
-      this.notify.warning('Solo un administrador puede guardar la configuración.');
+    if (!this.auth.puede('CONFIG_EDITAR')) {
+      this.notify.warning('No tiene permiso para guardar la configuración.');
       return;
     }
     this.appConfig.guardar(this.configMapa).subscribe({
@@ -1139,21 +1084,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private refrescarRolesYUsuariosAdmin(): void {
-    this.admin.listarRolesCatalogo().subscribe({
-      next: (list) => {
-        this.rolesMatrixRoles = this.perms.matrixRolesUnion(list);
-        const m = { ...this.perms.getFullMatrix() };
-        for (const r of this.rolesMatrixRoles) {
-          if (!m[r]) {
-            m[r] = this.perms.defaultNavForRole(r);
-          }
-        }
-        this.rolesMatrix = m;
+  private cargarRolesCatalogoNombres(): void {
+    if (!this.auth.canAdministrarRoles()) {
+      return;
+    }
+    this.rolService.listarRoles().subscribe({
+      next: (roles) => {
+        this.rolesCatalogoNombres = roles
+            .filter((r) => r.activo)
+            .map((r) => r.nombre)
+            .sort((a, b) => a.localeCompare(b));
         this.cdr.markForCheck();
       },
-      error: (err) => console.error(err)
+      error: () => {
+        this.rolesCatalogoNombres = [...APP_ROLES];
+        this.cdr.markForCheck();
+      }
     });
+  }
+
+  private refrescarUsuariosAdmin(): void {
     this.admin.listarUsuarios().subscribe({
       next: (rows) => {
         this.usuariosAdmin = rows;
@@ -1163,43 +1113,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  crearRolEnCatalogo(): void {
-    const nombre = (this.nuevoRolNombre || '').trim();
-    if (!nombre) {
-      this.notify.warning('Escriba el nombre del rol (se guardará en MAYÚSCULAS).');
-      return;
-    }
-    this.admin.crearRolCatalogo(nombre).subscribe({
-      next: () => {
-        this.nuevoRolNombre = '';
-        this.refrescarRolesYUsuariosAdmin();
-      },
-      error: (err: any) => {
-        console.error(err);
-        this.notify.error(this.mensajeHttp(err, 'No se pudo crear el rol'));
-      }
-    });
-  }
-
-  eliminarRolCatalogo(rol: string): void {
-    if (!confirm(`¿Eliminar el rol «${rol}» del catálogo? (No debe haber usuarios con ese rol.)`)) {
-      return;
-    }
-    this.admin.eliminarRolCatalogo(rol).subscribe({
-      next: () => this.refrescarRolesYUsuariosAdmin(),
-      error: (err: any) => {
-        console.error(err);
-        this.notify.error(this.mensajeHttp(err, 'No se pudo eliminar el rol'));
-      }
-    });
-  }
-
   abrirModalUsuarioNuevo(): void {
     this.modoEdicionUsuario = false;
     this.usuarioForm = {
       nombre: '',
       correo: '',
-      rol: this.rolesMatrixRoles[0] ?? 'PRODUCCION',
+      rol: this.rolesCatalogoNombres[0] ?? 'PRODUCCION',
       password: '',
       activo: true
     };
@@ -1250,7 +1169,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.cerrarModalUsuario();
-            this.refrescarRolesYUsuariosAdmin();
+            this.refrescarUsuariosAdmin();
           },
           error: (err: any) => {
             console.error(err);
@@ -1270,7 +1189,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.cerrarModalUsuario();
-          this.refrescarRolesYUsuariosAdmin();
+          this.refrescarUsuariosAdmin();
         },
         error: (err: any) => {
           console.error(err);
